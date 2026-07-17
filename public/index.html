@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>OWN.CAR — Client Portal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+  :root{
+    --bg:#0B0B0D;--surface:#151519;--surface2:#1C1C22;--surface3:#232329;
+    --line:rgba(255,255,255,0.07);--line2:rgba(255,255,255,0.12);
+    --text:#F5F5F6;--muted:#8C8C95;--muted2:#6A6A72;
+    --accent:#E11531;--accent-2:#FF3049;--accent-soft:rgba(225,21,49,0.14);
+    --green:#43B581;--green-soft:rgba(67,181,129,0.14);--amber:#E0A44A;--amber-soft:rgba(224,164,74,0.14);--red-soft:rgba(225,21,49,0.15);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;font-family:'Poppins',system-ui,sans-serif;}
+  body{background:#050506;color:var(--text);min-height:100vh;display:flex;justify-content:center;}
+  #app{width:100%;max-width:460px;min-height:100vh;background:
+      radial-gradient(600px 300px at 100% 0%,rgba(225,21,49,0.10),rgba(0,0,0,0) 60%),var(--bg);
+    position:relative;display:flex;flex-direction:column;padding-bottom:86px;}
+  .hidden{display:none !important;}
+  .muted{color:var(--muted);} .center{text-align:center;}
+  button{cursor:pointer;font-family:inherit;}
+  .btn{width:100%;height:52px;border:none;border-radius:15px;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 10px 24px -8px rgba(225,21,49,.6);}
+  .btn-ghost{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--line2);}
+  input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;padding:0 16px;outline:none;}
+  input:focus,select:focus{border-color:var(--accent);}
+  label{font-size:12px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;}
+
+  /* header */
+  .apphead{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;}
+  .apphead .left{display:flex;align-items:center;gap:11px;}
+  .mono{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,#241c20,#0e0e10 80%);font-size:11px;font-weight:700;}
+  .mono b{color:var(--accent);}
+  .apphead .ttl{font-size:15px;font-weight:600;}
+  .apphead .ttl small{display:block;font-size:9px;color:var(--muted2);letter-spacing:2px;margin-top:1px;}
+  .iconbtn{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);}
+  .backbtn{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;}
+
+  .body{flex:1;padding:6px 20px 20px;}
+  .h1{font-size:24px;font-weight:600;letter-spacing:-.3px;}
+  .sub{font-size:14px;color:var(--muted);font-weight:300;}
+  .sec-h{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 13px;}
+  .sec-h .t{font-size:15px;font-weight:600;}
+
+  /* balance */
+  .balance{border-radius:24px;padding:22px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.09);
+    background:radial-gradient(400px 180px at 110% -20%,rgba(225,21,49,0.28),rgba(225,21,49,0) 60%),linear-gradient(160deg,#201519,#121216);margin-top:8px;}
+  .balance .lbl{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+  .balance .amt{font-size:34px;font-weight:600;letter-spacing:-1px;margin-top:6px;}
+  .balance .amt .cur{font-size:15px;color:var(--muted);vertical-align:6px;margin-right:6px;}
+  .due{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:#e7c9a0;background:rgba(199,166,103,0.12);border:1px solid rgba(199,166,103,0.25);padding:5px 11px;border-radius:20px;}
+  .due .d{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+  .brow{display:flex;gap:11px;margin-top:18px;}
+
+  .qa{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px;}
+  .qi{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:none;color:var(--muted);}
+  .qi .ic{width:100%;height:60px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;}
+  .qi .qt{font-size:11px;}
+
+  .vehicle{border-radius:20px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(160deg,#17171c,#101013);margin-top:4px;}
+  .vehicle .vimg{height:92px;background:radial-gradient(300px 130px at 70% 120%,#33333c,#0e0e11 70%);position:relative;}
+  .vtag{position:absolute;top:12px;left:14px;font-size:10px;letter-spacing:1px;color:#bfefd6;background:var(--green-soft);border:1px solid rgba(67,181,129,0.3);padding:4px 10px;border-radius:20px;}
+  .vmeta{padding:13px 16px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .vname{font-size:16px;font-weight:600;} .vsub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .vplate{font-size:12px;font-weight:600;color:#e8d9c0;border:1px solid var(--line2);border-radius:8px;padding:5px 10px;}
+
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin:6px 0 16px;}
+  .seg button{flex:1;background:none;border:none;color:var(--muted);font-size:13px;padding:9px 0;border-radius:10px;}
+  .seg button.on{background:var(--surface3);color:var(--text);font-weight:500;}
+
+  .row{display:flex;align-items:center;gap:14px;padding:15px 16px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
+  .row .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .row .m{flex:1;} .row .r{text-align:right;}
+  .r1{font-size:14px;font-weight:600;} .r2{font-size:11px;color:var(--muted);margin-top:3px;}
+  .amt2{font-size:15px;font-weight:600;}
+  .pill{display:inline-block;font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;margin-top:5px;}
+  .pill.paid{background:var(--green-soft);color:#7fe0b4;} .pill.due{background:var(--amber-soft);color:#f0c88a;} .pill.overdue,.pill.unpaid{background:var(--red-soft);color:#ff8a97;}
+
+  .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 18px;}
+  .scell{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;}
+  .scell.hi{grid-column:span 2;background:linear-gradient(160deg,#201519,#141116);border-color:rgba(225,21,49,0.3);}
+  .scell .sl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+  .scell .sv{font-size:20px;font-weight:600;margin-top:6px;} .scell.hi .sv{font-size:26px;}
+  .led{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line);}
+  .ldot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .ldot.deb{background:var(--accent);} .ldot.cre{background:var(--green);}
+  .led .lamt{font-size:13.5px;font-weight:600;} .led .lamt.cre{color:var(--green);}
+
+  .rcpt-check{width:74px;height:74px;border-radius:50%;background:var(--green-soft);border:1px solid rgba(67,181,129,0.35);display:flex;align-items:center;justify-content:center;margin:22px auto 16px;}
+  .rcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 18px;margin-top:20px;}
+  .rrow{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px dashed var(--line2);}
+  .rrow:last-child{border-bottom:none;} .rrow .rk{font-size:12.5px;color:var(--muted);} .rrow .rv{font-size:13.5px;font-weight:500;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
+  .chip{font-size:12.5px;padding:10px 15px;border-radius:13px;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
+  .chip.on{background:var(--accent-soft);border-color:rgba(225,21,49,0.4);color:#ffb3bd;font-weight:500;}
+  .dates,.times{display:flex;gap:10px;margin-bottom:20px;}
+  .dcell,.tcell{flex:1;border:1px solid var(--line);border-radius:13px;padding:11px 0;text-align:center;background:var(--surface);color:var(--muted);font-size:13px;}
+  .dcell.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tcell.on{background:var(--accent-soft);border-color:var(--accent);color:#fff;}
+  .dcell .dn{font-size:18px;font-weight:600;color:var(--text);} .dcell.on .dn{color:#fff;}
+
+  /* bottom nav */
+  .nav{position:fixed;bottom:0;width:100%;max-width:460px;height:78px;background:rgba(11,11,13,0.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:12px;}
+  .nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted2);font-size:10px;}
+  .nav button.on{color:var(--text);} .nav button.on .nl{color:var(--accent);}
+
+  .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);background:rgba(67,181,129,.16);border:1px solid rgba(67,181,129,.45);color:#bff0d6;border-radius:14px;padding:12px 18px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .loading{text-align:center;color:var(--muted);padding:40px 0;font-size:14px;}
+
+  /* login */
+  .login-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:30px 26px 60px;}
+  .login-logo{width:76px;height:76px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;background:radial-gradient(circle at 50% 35%,#2a2024,#101012 80%);box-shadow:0 0 0 6px rgba(225,21,49,0.05);font-size:15px;font-weight:700;letter-spacing:1px;}
+  .login-logo b{color:var(--accent);}
+  .login h1{font-size:26px;font-weight:600;text-align:center;}
+  .login p{font-size:14px;color:var(--muted);text-align:center;margin:8px 0 26px;font-weight:300;}
+  .field{margin-bottom:16px;}
+  .err{color:#ff8a97;font-size:13px;margin:4px 2px 0;min-height:16px;}
+  .devnote{font-size:12px;color:#e0c98a;background:rgba(224,164,74,0.1);border:1px solid rgba(224,164,74,0.25);border-radius:12px;padding:12px;margin-top:14px;text-align:center;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Loading…</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (h) => { const t=document.createElement('template'); t.innerHTML=h.trim(); return t.content.firstChild; };
+const app = document.getElementById('app');
+const fmt = (n) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const dmy = (s) => { if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+async function api(path, opts){ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+
+let ME=null, CFG={mock:true};
+let booking={service_type:'Full Service',date:null,time:null};
+
+// ---------- LOGIN (email → password, first-time setup, forgot password) ----------
+let AUTH={email:''};
+function loginShell(inner){
+  app.innerHTML='';
+  app.appendChild($(`<div class="login-wrap"><div class="login">
+    <div class="login-logo"><span>O<b>.</b>C</span></div>
+    <h1>OWN.CAR</h1>${inner}</div></div>`));
+}
+function renderLogin(){ stepEmail(); }
+
+function stepEmail(){
+  loginShell(`<p>Sign in to view your invoices, statements &amp; more</p>
+    <div class="field"><label>EMAIL ADDRESS</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email" value="${AUTH.email||''}" /></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="go">Continue</button>`);
+  const go=async()=>{
+    const email=app.querySelector('#email').value.trim().toLowerCase(); const err=app.querySelector('#err'); err.textContent='';
+    if(!email){ err.textContent='Please enter your email.'; return; }
+    AUTH.email=email;
+    try{ const r=await api('/api/auth/check',{method:'POST',body:JSON.stringify({email})});
+      if(r.hasPassword) stepPassword(); else { await requestCode(); stepSetPassword(false); }
+    }catch(e){ err.textContent=e.error||'Something went wrong.'; }
+  };
+  app.querySelector('#go').onclick=go;
+  app.querySelector('#email').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+}
+
+function stepPassword(){
+  loginShell(`<p>Welcome back — enter your password</p>
+    <div class="field"><label>EMAIL</label><input value="${AUTH.email}" disabled /></div>
+    <div class="field"><label>PASSWORD</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password" /></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="signin">Sign in</button>
+    <p style="margin-top:16px"><a id="forgot" style="color:var(--accent);cursor:pointer">Forgot password?</a> · <a id="changeemail" style="color:var(--muted);cursor:pointer">Use a different email</a></p>`);
+  const signin=async()=>{
+    const err=app.querySelector('#err'); err.textContent='';
+    try{ await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:AUTH.email,password:app.querySelector('#pw').value})}); await boot(); }
+    catch(e){ err.textContent=e.error||'Incorrect password.'; }
+  };
+  app.querySelector('#signin').onclick=signin;
+  app.querySelector('#pw').addEventListener('keydown',e=>{ if(e.key==='Enter') signin(); });
+  app.querySelector('#forgot').onclick=async()=>{ await requestCode(); stepSetPassword(true); };
+  app.querySelector('#changeemail').onclick=()=>{ AUTH.email=''; stepEmail(); };
+}
+
+let DEVCODE='';
+async function requestCode(){
+  try{ const r=await api('/api/auth/send-code',{method:'POST',body:JSON.stringify({email:AUTH.email})}); DEVCODE=r.devCode||''; }
+  catch(e){ DEVCODE=''; }
+}
+
+function stepSetPassword(isReset){
+  loginShell(`<p>${isReset?'Reset your password':'Welcome! Let’s set up your account'}</p>
+    <p style="font-size:13px;color:var(--muted);margin-top:-14px">We emailed a 6-digit code to <b style="color:var(--text)">${AUTH.email}</b></p>
+    <div class="field" style="margin-top:18px"><label>6-DIGIT CODE</label><input id="code" inputmode="numeric" maxlength="6" placeholder="______" /></div>
+    <div class="field"><label>${isReset?'NEW PASSWORD':'CREATE A PASSWORD'} (min 8 characters)</label><input id="pw" type="password" placeholder="Choose a password" autocomplete="new-password" /></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="save">${isReset?'Reset password &amp; sign in':'Create password &amp; sign in'}</button>
+    <p style="margin-top:14px"><a id="resend" style="color:var(--muted);cursor:pointer">Resend code</a></p>
+    ${DEVCODE?`<div class="devnote">Testing mode — your code is <b>${DEVCODE}</b><br>(In production this is emailed, not shown.)</div>`:''}`);
+  app.querySelector('#save').onclick=async()=>{
+    const err=app.querySelector('#err'); err.textContent='';
+    const code=app.querySelector('#code').value.trim(), pw=app.querySelector('#pw').value;
+    if(pw.length<8){ err.textContent='Password must be at least 8 characters.'; return; }
+    try{ await api('/api/auth/set-password',{method:'POST',body:JSON.stringify({email:AUTH.email,code,password:pw})}); await boot(); }
+    catch(e){ err.textContent=e.error||'Could not set password.'; }
+  };
+  app.querySelector('#resend').onclick=async()=>{ await requestCode(); stepSetPassword(isReset); };
+}
+
+// ---------- SHELL ----------
+function shell(title, bodyHtml, opts={}){
+  app.innerHTML='';
+  const head = opts.back
+    ? `<div class="apphead"><div class="left"><button class="backbtn" id="back">‹</button><div class="apphead-title" style="font-size:17px;font-weight:600">${title}</div></div></div>`
+    : `<div class="apphead"><div class="left"><div class="mono"><span>O<b>.</b>C</span></div><div class="ttl">OWN.CAR<small>CLIENT PORTAL</small></div></div>
+       <button class="iconbtn" id="logout" title="Sign out">⏻</button></div>`;
+  app.appendChild($(`<div>${head}<div class="body">${bodyHtml}</div></div>`));
+  app.appendChild(navBar());
+  const b=document.getElementById('back'); if(b) b.onclick=()=>go('home');
+  const lo=document.getElementById('logout'); if(lo) lo.onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); };
+}
+function navBar(){
+  const items=[['home','Home','▤'],['invoices','Invoices','▦'],['service','Service','▧'],['account','Account','◍']];
+  const nav=$(`<div class="nav"></div>`);
+  items.forEach(([k,l])=>{ const active=(k===CURRENT||(k==='service'&&CURRENT==='service')); const btn=$(`<button class="${active?'on':''}"><span class="ni">●</span><span class="nl">${l}</span></button>`); btn.onclick=()=>go(k==='service'?'service':k==='account'?'home':k); nav.appendChild(btn); });
+  return nav;
+}
+
+let CURRENT='home';
+async function go(view){ CURRENT=view; try{ if(view==='home') await viewHome(); else if(view==='invoices') await viewInvoices(); else if(view==='statement') await viewStatement(); else if(view==='receipts') await viewReceipts(); else if(view==='service') viewBooking(); }catch(e){ shell('Error',`<div class="loading">${(e&&e.error)||'Something went wrong.'}</div>`); } }
+
+// ---------- HOME ----------
+async function viewHome(){
+  shell('Home','<div class="loading">Loading…</div>');
+  const me=await api('/api/me'); ME=me;
+  const v=me.vehicle;
+  const vehicleCard=v?`<div class="sec-h"><div class="t">Your Vehicle</div></div>
+    <div class="vehicle"><div class="vimg"><div class="vtag">● ACTIVE RENTAL</div></div>
+    <div class="vmeta"><div><div class="vname">${v.name}</div><div class="vsub">${v.year} · Contract ends ${v.contract_end}</div></div><div class="vplate">${v.plate}</div></div></div>`:'';
+  shell('Home',`
+    <div class="h1">Welcome back,</div><div class="sub" style="font-size:20px;color:var(--text);font-weight:600;margin-top:2px">${me.name}</div>
+    <div class="balance"><div class="lbl">Outstanding Balance</div>
+      <div class="amt"><span class="cur">AED</span>${fmt(me.outstanding)}</div>
+      ${me.nextDueDate?`<div class="due"><span class="d"></span>Next payment due ${dmy(me.nextDueDate)}</div>`:''}
+      <div class="brow"><button class="btn btn-primary" style="height:46px" id="stmt">View Statement</button></div></div>
+    <div class="qa">
+      <button class="qi" data-go="invoices"><span class="ic">▦</span><span class="qt">Invoices</span></button>
+      <button class="qi" data-go="statement"><span class="ic">▤</span><span class="qt">Statement</span></button>
+      <button class="qi" data-go="receipts"><span class="ic">✓</span><span class="qt">Receipts</span></button>
+      <button class="qi" data-go="service"><span class="ic">⚙</span><span class="qt">Service</span></button>
+    </div>${vehicleCard}`);
+  app.querySelector('#stmt').onclick=()=>go('statement');
+  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+}
+
+// ---------- INVOICES ----------
+async function viewInvoices(){
+  shell('Invoices','<div class="loading">Loading…</div>',{back:true});
+  const {invoices}=await api('/api/invoices');
+  const due=invoices.filter(i=>Number(i.balance)>0).reduce((s,i)=>s+Number(i.balance),0);
+  const rows=invoices.map(i=>{
+    const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
+    const label=st==='paid'?'Paid':st==='overdue'?'Overdue':'Due';
+    return `<div class="row"><div class="ic">▦</div><div class="m"><div class="r1">${i.invoice_number}</div><div class="r2">Issued ${dmy(i.date)} · Due ${dmy(i.due_date)}</div></div>
+      <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${label}</span></div></div>`;
+  }).join('');
+  shell('Invoices',`<div class="scell hi" style="margin:6px 0 16px"><div class="sl">Total Due · ${invoices.filter(i=>Number(i.balance)>0).length} invoices</div><div class="sv">AED ${fmt(due)}</div></div>${rows||'<div class="loading">No invoices yet.</div>'}`,{back:true});
+}
+
+// ---------- STATEMENT ----------
+async function viewStatement(){
+  shell('Statement','<div class="loading">Loading…</div>',{back:true});
+  const {entries,summary}=await api('/api/statement');
+  const led=entries.map(e=>`<div class="led"><div class="ldot ${e.credit?'cre':'deb'}"></div>
+    <div class="m"><div class="r1" style="font-weight:500">${e.label}</div><div class="r2">${dmy(e.date)}</div></div>
+    <div class="lamt ${e.credit?'cre':''}">${e.credit?'−'+fmt(e.credit):fmt(e.debit)}</div></div>`).join('');
+  shell('Statement of Account',`
+    <div class="sgrid">
+      <div class="scell"><div class="sl">Invoiced</div><div class="sv">AED ${fmt(summary.invoiced)}</div></div>
+      <div class="scell"><div class="sl">Paid</div><div class="sv" style="color:var(--green)">AED ${fmt(summary.paid)}</div></div>
+      <div class="scell hi"><div class="sl">Closing Balance (Due)</div><div class="sv">AED ${fmt(summary.closing)}</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted2);letter-spacing:2px;margin:4px 2px 6px">TRANSACTIONS</div>${led}`,{back:true});
+}
+
+// ---------- RECEIPTS ----------
+async function viewReceipts(){
+  shell('Receipts','<div class="loading">Loading…</div>',{back:true});
+  const {payments}=await api('/api/receipts');
+  const rows=payments.map(p=>`<div class="row"><div class="ic" style="background:var(--green-soft);border-color:transparent">✓</div>
+    <div class="m"><div class="r1">${p.payment_number}</div><div class="r2">${dmy(p.date)} · ${p.payment_mode||''}${p.invoice_numbers?' · '+p.invoice_numbers:''}</div></div>
+    <div class="r"><div class="amt2" style="color:var(--green)">AED ${fmt(p.amount)}</div></div></div>`).join('');
+  shell('Receipts',rows||'<div class="loading">No payments yet.</div>',{back:true});
+}
+
+// ---------- BOOKING ----------
+function viewBooking(){
+  const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
+  const today=new Date(); const days=[...Array(4)].map((_,k)=>{const d=new Date(today);d.setDate(d.getDate()+k+1);return d;});
+  const times=['09:00','11:30','14:00','16:30'];
+  const veh=ME&&ME.vehicle?ME.vehicle.name:'Your vehicle';
+  shell('Book Maintenance',`
+    <label>VEHICLE</label><div class="row" style="margin-bottom:20px"><div class="ic">⚙</div><div class="m"><div class="r1">${veh}</div><div class="r2">${ME&&ME.vehicle?ME.vehicle.plate:''}</div></div></div>
+    <label>SERVICE TYPE</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
+    <label>PREFERRED DATE</label><div class="dates" id="dates">${days.map((d,i)=>`<button class="dcell ${booking.date===i?'on':''}" data-d="${i}"><div style="font-size:10px;text-transform:uppercase">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div><div class="dn">${d.getDate()}</div></button>`).join('')}</div>
+    <label>TIME SLOT</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+    <button class="btn btn-primary" id="confirm">Confirm Booking</button>`,{back:true});
+  const pick=(sel,attr,key,val)=>{ app.querySelectorAll(sel).forEach(b=>b.onclick=()=>{ booking[key]=b.dataset[attr]===undefined?val:(attr==='d'?Number(b.dataset[attr]):b.dataset[attr]); app.querySelectorAll(sel).forEach(x=>x.classList.remove('on')); b.classList.add('on'); }); };
+  pick('#chips .chip','s','service_type'); pick('#dates .dcell','d','date'); pick('#times .tcell','t','time');
+  app.querySelector('#confirm').onclick=async()=>{
+    if(booking.date===null||!booking.time){ toast('Please pick a date and time.'); return; }
+    const days2=days; const d=days2[booking.date];
+    try{ await api('/api/bookings',{method:'POST',body:JSON.stringify({vehicle:veh,service_type:booking.service_type,preferred_date:d.toLocaleDateString('en-GB'),time_slot:booking.time})});
+      toast('Maintenance request sent — we’ll confirm shortly.'); setTimeout(()=>go('home'),1200);
+    }catch(e){ toast((e&&e.error)||'Could not submit.'); }
+  };
+}
+
+// ---------- BOOT ----------
+async function boot(){
+  try{ CFG=await api('/api/config'); }catch(e){}
+  try{ await api('/api/me'); CURRENT='home'; await viewHome(); }
+  catch(e){ renderLogin(); }
+}
+boot();
+</script>
+</body>
+</html>

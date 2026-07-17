@@ -10,6 +10,7 @@ import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(session({
   secret: process.env.SESSION_SECRET || "dev-secret-change-me",

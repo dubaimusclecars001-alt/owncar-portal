@@ -166,4 +166,21 @@ app.get("/api/config", (req, res) => res.json({ mock: USE_MOCK, emailConfigured 
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
+
+// ---- One-time Zoho connect helper (safe to remove after setup) ----
+app.get("/connect", (req, res) => {
+  res.type("html").send(`<meta name=viewport content="width=device-width,initial-scale=1"><body style="font-family:sans-serif;background:#0b0b0d;color:#eee;max-width:540px;margin:auto;padding:24px"><h2>Connect Zoho Books</h2><form method=post><input name=client_id placeholder="Client ID" style="width:100%;padding:12px;margin:6px 0;box-sizing:border-box"><input name=client_secret placeholder="Client Secret" style="width:100%;padding:12px;margin:6px 0;box-sizing:border-box"><input name=code placeholder="Authorization Code" style="width:100%;padding:12px;margin:6px 0;box-sizing:border-box"><button style="background:#E11531;color:#fff;border:0;padding:14px;width:100%">Get refresh token</button></form></body>`);
+});
+app.post("/connect", express.urlencoded({ extended: true }), async (req, res) => {
+  try {
+    const { client_id, client_secret, code } = req.body;
+    const host = process.env.ZOHO_ACCOUNTS_HOST || "https://accounts.zoho.com";
+    const p = new URLSearchParams({ grant_type: "authorization_code", client_id, client_secret, code });
+    const r = await fetch(`${host}/oauth/v2/token`, { method: "POST", body: p });
+    const d = await r.json();
+    if (!d.refresh_token) return res.type("html").send(`<body style="font-family:sans-serif;background:#0b0b0d;color:#eee;padding:24px"><h3 style="color:#ff8a97">No token yet</h3><pre style="white-space:pre-wrap">${JSON.stringify(d)}</pre><a style="color:#E11531" href="/connect">Try again</a> (codes expire in minutes — make a fresh one in Zoho).</body>`);
+    res.type("html").send(`<body style="font-family:sans-serif;background:#0b0b0d;color:#eee;max-width:640px;margin:auto;padding:24px"><h2 style="color:#43B581">Success!</h2><p>Copy these into Render &rarr; Environment, set USE_MOCK to false, then redeploy:</p><p>ZOHO_CLIENT_ID</p><pre style="white-space:pre-wrap;background:#151519;padding:10px">${client_id}</pre><p>ZOHO_CLIENT_SECRET</p><pre style="white-space:pre-wrap;background:#151519;padding:10px">${client_secret}</pre><p>ZOHO_REFRESH_TOKEN</p><pre style="white-space:pre-wrap;background:#151519;padding:10px">${d.refresh_token}</pre></body>`);
+  } catch (e) { res.status(500).send("Error: " + e.message); }
+});
+
 app.listen(PORT, () => console.log(`OWN.CAR portal running on http://localhost:${PORT}  (mock=${USE_MOCK})`));

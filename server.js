@@ -4,13 +4,13 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getPayments, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", 1); // required so login cookies work behind Render/host proxies (https)
 app.use(express.json());
 app.use(session({
   secret: process.env.SESSION_SECRET || "dev-secret-change-me",
@@ -22,6 +22,19 @@ app.use(session({
 // ---- login code store (in-memory; fine for a single small service) ----
 const codes = new Map(); // email -> { code, expires, tries }
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+// ---- SMS (Twilio) — texts the login code to the customer's phone ----
+const smsConfigured = !!process.env.TWILIO_ACCOUNT_SID;
+async function sendCodeSMS(phone, code) {
+  const sid = process.env.TWILIO_ACCOUNT_SID, token = process.env.TWILIO_AUTH_TOKEN, from = process.env.TWILIO_FROM;
+  const body = new URLSearchParams({ To: phone, From: from, Body: `Your OWN.CAR login code is ${code}. It expires in 10 minutes.` });
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: "POST",
+    headers: { Authorization: "Basic " + Buffer.from(`${sid}:${token}`).toString("base64"), "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) throw new Error("Twilio " + res.status + ": " + (await res.text()));
+}
 
 // ---- helpers ----
 function requireAuth(req, res, next) {
@@ -138,6 +151,52 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load receipts." }); }
 });
 
+// ---- PDF downloads (a client can only download their own documents) ----
+app.get("/api/invoices/:id/pdf", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const invoices = await getInvoices(c.contact_id);
+    const inv = invoices.find((i) => String(i.invoice_id) === String(req.params.id));
+    if (!inv) return res.status(404).json({ error: "Invoice not found." });
+    const lines = [
+      `Invoice Number: ${inv.invoice_number}`,
+      `Customer: ${c.contact_name}`,
+      `Date: ${inv.date || "-"}`,
+      `Due Date: ${inv.due_date || "-"}`,
+      `Amount: AED ${money(inv.total)}`,
+      `Balance: AED ${money(inv.balance)}`,
+      `Status: ${inv.status || "-"}`,
+    ];
+    const pdf = await getInvoicePdf(inv.invoice_id, lines);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${inv.invoice_number}.pdf"`);
+    res.send(pdf);
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not download the invoice from Zoho Books." }); }
+});
+
+app.get("/api/receipts/:id/pdf", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const payments = await getPayments(c.contact_id);
+    const p = payments.find((x) => String(x.payment_id) === String(req.params.id));
+    if (!p) return res.status(404).json({ error: "Receipt not found." });
+    const lines = [
+      `Receipt Number: ${p.payment_number}`,
+      `Customer: ${c.contact_name}`,
+      `Date: ${p.date || "-"}`,
+      `Amount: AED ${money(p.amount)}`,
+      `Payment Mode: ${p.payment_mode || "-"}`,
+      `Applied to: ${p.invoice_numbers || "-"}`,
+    ];
+    const pdf = await getPaymentPdf(p.payment_id, lines);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${p.payment_number}.pdf"`);
+    res.send(pdf);
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not download the receipt from Zoho Books." }); }
+});
+
 app.post("/api/bookings", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);
@@ -165,8 +224,6 @@ app.get("/api/config", (req, res) => res.json({ mock: USE_MOCK, emailConfigured 
 // ---- static frontend ----
 app.use(express.static(path.join(__dirname, "public")));
 
-const PORT = process.env.PORT || 3000;
-
 // ---- One-time Zoho connect helper (safe to remove after setup) ----
 app.get("/connect", (req, res) => {
   res.type("html").send(`<meta name=viewport content="width=device-width,initial-scale=1"><body style="font-family:sans-serif;background:#0b0b0d;color:#eee;max-width:540px;margin:auto;padding:24px"><h2>Connect Zoho Books</h2><form method=post><input name=client_id placeholder="Client ID" style="width:100%;padding:12px;margin:6px 0;box-sizing:border-box"><input name=client_secret placeholder="Client Secret" style="width:100%;padding:12px;margin:6px 0;box-sizing:border-box"><input name=code placeholder="Authorization Code" style="width:100%;padding:12px;margin:6px 0;box-sizing:border-box"><button style="background:#E11531;color:#fff;border:0;padding:14px;width:100%">Get refresh token</button></form></body>`);
@@ -183,4 +240,5 @@ app.post("/connect", express.urlencoded({ extended: true }), async (req, res) =>
   } catch (e) { res.status(500).send("Error: " + e.message); }
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`OWN.CAR portal running on http://localhost:${PORT}  (mock=${USE_MOCK})`));

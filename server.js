@@ -46,6 +46,24 @@ async function currentCustomer(req) {
 }
 const money = (n) => Number(n || 0);
 
+// Builds a statement (optionally for a date range) with a running opening balance.
+// Dates are ISO "YYYY-MM-DD" strings, so plain string comparison is correct.
+function computeStatement(invoices, payments, from, to) {
+  const inRange = (d) => (!from || (d || "") >= from) && (!to || (d || "") <= to);
+  const before = (d) => from && (d || "") < from;
+  let opening = 0;
+  for (const i of invoices) { if (before(i.date)) opening += money(i.total); }
+  for (const p of payments) { if (before(p.date)) opening -= money(p.amount); }
+  const entries = [
+    ...invoices.filter((i) => inRange(i.date)).map((i) => ({ type: "invoice", date: i.date, label: `Invoice ${i.invoice_number}`, debit: money(i.total) })),
+    ...payments.filter((p) => inRange(p.date)).map((p) => ({ type: "payment", date: p.date, label: `Payment · ${p.payment_mode || ""}`, credit: money(p.amount) })),
+  ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const invoiced = invoices.filter((i) => inRange(i.date)).reduce((s, i) => s + money(i.total), 0);
+  const paid = payments.filter((p) => inRange(p.date)).reduce((s, p) => s + money(p.amount), 0);
+  const closing = opening + invoiced - paid;
+  return { entries, opening, invoiced, paid, closing, from: from || null, to: to || null };
+}
+
 // ---- auth routes ----
 // Step 1: enter email. Tells the client whether they already have a password.
 app.post("/api/auth/check", async (req, res) => {
@@ -132,14 +150,9 @@ app.get("/api/statement", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);
     const [invoices, payments] = await Promise.all([getInvoices(c.contact_id), getPayments(c.contact_id)]);
-    const entries = [
-      ...invoices.map(i => ({ type: "invoice", date: i.date, label: `Invoice ${i.invoice_number}`, debit: money(i.total) })),
-      ...payments.map(p => ({ type: "payment", date: p.date, label: `Payment · ${p.payment_mode}`, credit: money(p.amount) })),
-    ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-    const invoiced = invoices.reduce((s, i) => s + money(i.total), 0);
-    const paid = payments.reduce((s, p) => s + money(p.amount), 0);
-    const closing = invoices.reduce((s, i) => s + money(i.balance), 0);
-    res.json({ entries, summary: { invoiced, paid, closing } });
+    const from = (req.query.from || "").slice(0, 10), to = (req.query.to || "").slice(0, 10);
+    const st = computeStatement(invoices, payments, from, to);
+    res.json({ entries: st.entries, summary: { invoiced: st.invoiced, paid: st.paid, closing: st.closing, opening: st.opening, from: st.from, to: st.to } });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load statement." }); }
 });
 
@@ -202,15 +215,11 @@ app.get("/api/statement/pdf", requireAuth, async (req, res) => {
     const c = await currentCustomer(req);
     if (!c) return res.status(404).json({ error: "Account not found" });
     const [invoices, payments] = await Promise.all([getInvoices(c.contact_id), getPayments(c.contact_id)]);
-    const entries = [
-      ...invoices.map((i) => ({ date: i.date, label: `Invoice ${i.invoice_number}`, debit: money(i.total) })),
-      ...payments.map((p) => ({ date: p.date, label: `Payment ${p.payment_mode || ""}`, credit: money(p.amount) })),
-    ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-    const invoiced = invoices.reduce((s, i) => s + money(i.total), 0);
-    const paid = payments.reduce((s, p) => s + money(p.amount), 0);
-    const closing = invoices.reduce((s, i) => s + money(i.balance), 0);
-    const pdf = buildStatementPdf(c, entries, { invoiced, paid, closing });
-    const safe = (c.contact_name || "account").replace(/[^a-z0-9]+/gi, "_");
+    const from = (req.query.from || "").slice(0, 10), to = (req.query.to || "").slice(0, 10);
+    const st = computeStatement(invoices, payments, from, to);
+    const pdf = buildStatementPdf(c, st.entries, st);
+    const range = st.from || st.to ? `_${st.from || "start"}_to_${st.to || "today"}` : "";
+    const safe = ((c.contact_name || "account").replace(/[^a-z0-9]+/gi, "_")) + range;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="Statement-${safe}.pdf"`);
     res.send(pdf);

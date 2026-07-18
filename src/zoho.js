@@ -146,17 +146,20 @@ function mockPdf(title, lines = []) {
 // Generates a Statement of Account PDF from the customer's own invoices + payments.
 export function buildStatementPdf(customer, entries, summary) {
   const name = customer && customer.contact_name ? customer.contact_name : "";
+  const period = (summary.from || summary.to) ? `Period: ${summary.from || "Start"} to ${summary.to || "Today"}` : "Period: All transactions";
   let content = `BT /F2 24 Tf 60 800 Td (OWN.CAR) Tj ET\n`;
   content += `BT /F1 12 Tf 60 782 Td (Muscle Cars Rent A Car LLC) Tj ET\n`;
-  content += `BT /F2 17 Tf 60 748 Td (Statement of Account) Tj ET\n`;
-  content += `BT /F1 12 Tf 60 726 Td (Customer: ${pdfEsc(name)}) Tj ET\n`;
-  content += `BT /F1 11 Tf 60 702 Td (Total Invoiced: AED ${pdfNum(summary.invoiced)}) Tj ET\n`;
-  content += `BT /F1 11 Tf 260 702 Td (Paid: AED ${pdfNum(summary.paid)}) Tj ET\n`;
-  content += `BT /F2 11 Tf 420 702 Td (Balance Due: AED ${pdfNum(summary.closing)}) Tj ET\n`;
-  content += `BT /F2 11 Tf 60 668 Td (Date) Tj ET\n`;
-  content += `BT /F2 11 Tf 150 668 Td (Description) Tj ET\n`;
-  content += `BT /F2 11 Tf 470 668 Td (Amount) Tj ET\n`;
-  let y = 646;
+  content += `BT /F2 17 Tf 60 752 Td (Statement of Account) Tj ET\n`;
+  content += `BT /F1 11 Tf 60 732 Td (Customer: ${pdfEsc(name)}) Tj ET\n`;
+  content += `BT /F1 10 Tf 60 715 Td (${pdfEsc(period)}) Tj ET\n`;
+  content += `BT /F1 11 Tf 60 690 Td (Opening Balance: AED ${pdfNum(summary.opening || 0)}) Tj ET\n`;
+  content += `BT /F1 11 Tf 300 690 Td (Invoiced: AED ${pdfNum(summary.invoiced)}) Tj ET\n`;
+  content += `BT /F1 11 Tf 60 672 Td (Paid: AED ${pdfNum(summary.paid)}) Tj ET\n`;
+  content += `BT /F2 11 Tf 300 672 Td (Closing Balance: AED ${pdfNum(summary.closing)}) Tj ET\n`;
+  content += `BT /F2 11 Tf 60 642 Td (Date) Tj ET\n`;
+  content += `BT /F2 11 Tf 150 642 Td (Description) Tj ET\n`;
+  content += `BT /F2 11 Tf 470 642 Td (Amount) Tj ET\n`;
+  let y = 620;
   const maxRows = 26;
   const shown = (entries || []).slice(0, maxRows);
   for (const e of shown) {

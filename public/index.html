@@ -131,7 +131,15 @@ const $ = (h) => { const t=document.createElement('template'); t.innerHTML=h.tri
 const app = document.getElementById('app');
 const fmt = (n) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 const dmy = (s) => { if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
-async function api(path, opts){ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+async function api(path, opts){
+    if(!window._glInit){ window._glInit=1; window._glN=0;
+      var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#E11531;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
+      var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
+    }
+    var g=document.getElementById('gload'); window._glN++; if(g) g.classList.add('show');
+    try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+    finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+  }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
 
 let ME=null, CFG={mock:true};

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)file:///C:/Users/USER/Downloads/index_6.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>OWN.CAR — Client Portal</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
@@ -127,14 +127,9 @@
   .err{color:#ff8a97;font-size:13px;margin:4px 2px 0;min-height:16px;}
   .devnote{font-size:12px;color:#e0c98a;background:rgba(224,164,74,0.1);border:1px solid rgba(224,164,74,0.25);border-radius:12px;padding:12px;margin-top:14px;text-align:center;}
 </style>
-<style>.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}</style></head>
+</head>
 <body>
-<div id="app"><div class="login-wrap"><div class="login">
-    <div class="login-logo"><span>O<b>.</b>C</span></div>
-    <h1>OWN.CAR</h1><p>Sign in to view your invoices, statements &amp; more</p>
-    <div class="field"><label>EMAIL ADDRESS</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email" value=""></div>
-    <div class="err" id="err"></div>
-    <button class="btn btn-primary" id="go">Continue</button></div></div></div>
+<div id="app"><div class="loading">Loading…</div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -364,8 +359,8 @@ function viewBooking(){
   app.querySelector('#confirm').onclick=async()=>{
     if(booking.date===null||!booking.time){ toast('Please pick a date and time.'); return; }
     const days2=days; const d=days2[booking.date];
-    try{ await api('/api/bookings',{method:'POST',body:JSON.stringify({vehicle:veh,service_type:booking.service_type,preferred_date:d.toLocaleDateString('en-GB'),time_slot:booking.time})});
-      toast('Maintenance request sent — we’ll confirm shortly.'); setTimeout(()=>go('home'),1200);
+    try{ const r=await api('/api/bookings',{method:'POST',body:JSON.stringify({vehicle:veh,service_type:booking.service_type,preferred_date:d.toLocaleDateString('en-GB'),time_slot:booking.time})});
+      toast(r&&r.emailed?'Booking sent — our team has been notified.':'Booking received — we’ll confirm shortly.'); setTimeout(()=>go('home'),1400);
     }catch(e){ toast((e&&e.error)||'Could not submit.'); }
   };
 }
@@ -377,7 +372,6 @@ async function boot(){
   catch(e){ renderLogin(); }
 }
 boot();
-</script><div class="gload" id="gload"><div class="gspin"></div></div>
-
-
-</body></html>
+</script>
+</body>
+</html>

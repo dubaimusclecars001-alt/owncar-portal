@@ -231,6 +231,8 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
     const c = await currentCustomer(req);
     const booking = {
       customer_email: c.email,
+      customer_name: c.contact_name || "",
+      customer_phone: c.phone || null,
       vehicle: (req.body.vehicle || "").slice(0, 120),
       service_type: (req.body.service_type || "").slice(0, 60),
       preferred_date: (req.body.preferred_date || "").slice(0, 40),
@@ -239,12 +241,17 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
       created: new Date().toISOString(),
       status: "Requested",
     };
-    const file = path.join(__dirname, "data", "bookings.json");
-    const all = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
-    all.push(booking);
-    fs.writeFileSync(file, JSON.stringify(all, null, 2));
-    await sendBookingNotice(booking);
-    res.json({ ok: true });
+    // Save a local copy (best-effort; disk is ephemeral on Render, so email is the real delivery).
+    try {
+      const dir = path.join(__dirname, "data");
+      fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, "bookings.json");
+      const all = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
+      all.push(booking);
+      fs.writeFileSync(file, JSON.stringify(all, null, 2));
+    } catch (e) { console.error("booking save failed:", e.message); }
+    const notice = await sendBookingNotice(booking);
+    res.json({ ok: true, emailed: !!(notice && notice.delivered) });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not submit booking." }); }
 });
 

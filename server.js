@@ -4,7 +4,7 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 
@@ -195,6 +195,26 @@ app.get("/api/receipts/:id/pdf", requireAuth, async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="${p.payment_number}.pdf"`);
     res.send(pdf);
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not download the receipt from Zoho Books." }); }
+});
+
+app.get("/api/statement/pdf", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const [invoices, payments] = await Promise.all([getInvoices(c.contact_id), getPayments(c.contact_id)]);
+    const entries = [
+      ...invoices.map((i) => ({ date: i.date, label: `Invoice ${i.invoice_number}`, debit: money(i.total) })),
+      ...payments.map((p) => ({ date: p.date, label: `Payment ${p.payment_mode || ""}`, credit: money(p.amount) })),
+    ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const invoiced = invoices.reduce((s, i) => s + money(i.total), 0);
+    const paid = payments.reduce((s, p) => s + money(p.amount), 0);
+    const closing = invoices.reduce((s, i) => s + money(i.balance), 0);
+    const pdf = buildStatementPdf(c, entries, { invoiced, paid, closing });
+    const safe = (c.contact_name || "account").replace(/[^a-z0-9]+/gi, "_");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Statement-${safe}.pdf"`);
+    res.send(pdf);
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not generate the statement." }); }
 });
 
 app.post("/api/bookings", requireAuth, async (req, res) => {

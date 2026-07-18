@@ -52,6 +52,7 @@ export async function getCustomerByEmail(email) {
     contact_id: c.contact_id,
     contact_name: c.contact_name,
     email: c.email,
+    phone: c.mobile || c.phone || null,
     // Vehicle details can be stored as a custom field in Books; adjust the key as needed.
     vehicle: null,
   };
@@ -84,6 +85,54 @@ export async function getPayments(contactId) {
     payment_mode: p.payment_mode,
     invoice_numbers: p.invoice_numbers,
   }));
+}
+
+// ---------------- PDF downloads (real Zoho files) ----------------
+
+async function booksPdf(pathStr) {
+  const token = await getAccessToken();
+  const params = new URLSearchParams({ organization_id: ORG, accept: "pdf" });
+  const res = await fetch(`${API}/books/v3/${pathStr}?${params.toString()}`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}`, Accept: "application/pdf" },
+  });
+  if (!res.ok) throw new Error("Zoho PDF error " + res.status + ": " + (await res.text().catch(() => "")));
+  return Buffer.from(await res.arrayBuffer());
+}
+
+export async function getInvoicePdf(invoiceId, lines) {
+  if (USE_MOCK) return mockPdf("INVOICE", lines);
+  return booksPdf(`invoices/${invoiceId}`);
+}
+
+export async function getPaymentPdf(paymentId, lines) {
+  if (USE_MOCK) return mockPdf("PAYMENT RECEIPT", lines);
+  return booksPdf(`customerpayments/${paymentId}`);
+}
+
+// Builds a small, valid PDF so downloads work in demo (USE_MOCK) mode.
+function pdfEsc(s) { return String(s == null ? "" : s).replace(/([\\()])/g, "\\$1"); }
+function mockPdf(title, lines = []) {
+  const objs = [];
+  objs.push("<</Type/Catalog/Pages 2 0 R>>");
+  objs.push("<</Type/Pages/Kids[3 0 R]/Count 1>>");
+  objs.push("<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Resources<</Font<</F1 5 0 R>>>>/Contents 4 0 R>>");
+  let content = `BT /F1 24 Tf 60 770 Td (OWN.CAR) Tj ET\n`;
+  content += `BT /F1 13 Tf 60 748 Td (Muscle Cars Rent A Car LLC) Tj ET\n`;
+  content += `BT /F1 18 Tf 60 702 Td (${pdfEsc(title)}) Tj ET\n`;
+  let y = 666;
+  for (const ln of lines) { content += `BT /F1 12 Tf 60 ${y} Td (${pdfEsc(ln)}) Tj ET\n`; y -= 24; }
+  content += `BT /F1 10 Tf 60 80 Td (Sample document generated in demo mode.) Tj ET\n`;
+  const stream = `<</Length ${Buffer.byteLength(content, "latin1")}>>\nstream\n${content}endstream`;
+  objs.push(stream);
+  objs.push("<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>");
+  let pdf = "%PDF-1.4\n";
+  const offsets = [];
+  objs.forEach((o, i) => { offsets.push(Buffer.byteLength(pdf, "latin1")); pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = Buffer.byteLength(pdf, "latin1");
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  offsets.forEach((off) => { pdf += String(off).padStart(10, "0") + " 00000 n \n"; });
+  pdf += `trailer\n<</Size ${objs.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf, "latin1");
 }
 
 export { USE_MOCK };

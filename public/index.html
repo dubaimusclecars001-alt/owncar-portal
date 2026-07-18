@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)file:///C:/Users/USER/Downloads/index_5.html -->
+<!-- saved from url=(0044)file:///C:/Users/USER/Downloads/index_6.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -28,6 +28,8 @@
   .btn-ghost{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--line2);}
   input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;padding:0 16px;outline:none;}
   input:focus,select:focus{border-color:var(--accent);}
+  .drange{display:flex;gap:10px;margin:2px 0 4px;} .dfield{flex:1;min-width:0;}
+  input[type=date]{color-scheme:dark;padding:0 12px;} input[type=date]::-webkit-calendar-picker-indicator{filter:invert(76%) sepia(38%) saturate(560%) hue-rotate(1deg);cursor:pointer;}
   label{font-size:12px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;}
 
   /* header */
@@ -303,21 +305,35 @@ async function viewInvoices(){
 }
 
 // ---------- STATEMENT ----------
+let STMT_RANGE={from:'',to:''};
 async function viewStatement(){
   shell('Statement','<div class="loading">Loading…</div>',{back:true});
-  const {entries,summary}=await api('/api/statement');
+  const hasRange=!!(STMT_RANGE.from||STMT_RANGE.to);
+  const q=hasRange?('?from='+encodeURIComponent(STMT_RANGE.from||'')+'&to='+encodeURIComponent(STMT_RANGE.to||'')):'';
+  const {entries,summary}=await api('/api/statement'+q);
   const led=entries.map(e=>`<div class="led"><div class="ldot ${e.credit?'cre':'deb'}"></div>
     <div class="m"><div class="r1" style="font-weight:500">${e.label}</div><div class="r2">${dmy(e.date)}</div></div>
     <div class="lamt ${e.credit?'cre':''}">${e.credit?'−'+fmt(e.credit):fmt(e.debit)}</div></div>`).join('');
+  const ledHtml=entries.length?led:'<div class="loading">No transactions in this date range.</div>';
   shell('Statement of Account',`
+    <div class="drange">
+      <div class="dfield"><label>FROM</label><input type="date" id="from" value="${STMT_RANGE.from||''}"></div>
+      <div class="dfield"><label>TILL</label><input type="date" id="to" value="${STMT_RANGE.to||''}"></div>
+    </div>
+    ${hasRange?'<div style="text-align:right;margin:-6px 2px 12px"><a id="clr" style="color:var(--accent);font-size:12px;cursor:pointer">Clear dates · show all</a></div>':'<div style="margin-bottom:8px"></div>'}
     <div class="sgrid">
-      <div class="scell"><div class="sl">Invoiced</div><div class="sv">AED ${fmt(summary.invoiced)}</div></div>
-      <div class="scell"><div class="sl">Paid</div><div class="sv" style="color:var(--green)">AED ${fmt(summary.paid)}</div></div>
+      ${hasRange?`<div class="scell"><div class="sl">Opening</div><div class="sv">AED ${fmt(summary.opening||0)}</div></div>`:''}
+      <div class="scell"><div class="sl">Invoiced${hasRange?' (period)':''}</div><div class="sv">AED ${fmt(summary.invoiced)}</div></div>
+      <div class="scell"><div class="sl">Paid${hasRange?' (period)':''}</div><div class="sv" style="color:var(--green)">AED ${fmt(summary.paid)}</div></div>
       <div class="scell hi"><div class="sl">Closing Balance (Due)</div><div class="sv">AED ${fmt(summary.closing)}</div></div>
     </div>
     <button class="btn btn-primary" id="dlstmt" style="height:48px;margin:2px 0 16px">⤓ Download Statement (PDF)</button>
-    <div style="font-size:11px;color:var(--muted2);letter-spacing:2px;margin:4px 2px 6px">TRANSACTIONS</div>${led}`,{back:true});
-  const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf','Statement.pdf');
+    <div style="font-size:11px;color:var(--muted2);letter-spacing:2px;margin:4px 2px 6px">TRANSACTIONS</div>${ledHtml}`,{back:true});
+  const reload=()=>{ STMT_RANGE.from=app.querySelector('#from').value; STMT_RANGE.to=app.querySelector('#to').value; go('statement'); };
+  app.querySelector('#from').onchange=reload;
+  app.querySelector('#to').onchange=reload;
+  const clr=document.getElementById('clr'); if(clr) clr.onclick=()=>{ STMT_RANGE={from:'',to:''}; go('statement'); };
+  const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf'+q,'Statement.pdf');
 }
 
 // ---------- RECEIPTS ----------

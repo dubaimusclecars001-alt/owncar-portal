@@ -196,7 +196,7 @@ function stepSetPassword(isReset){
     <div class="err" id="err"></div>
     <button class="btn btn-primary" id="save">${isReset?'Reset password &amp; sign in':'Create password &amp; sign in'}</button>
     <p style="margin-top:14px"><a id="resend" style="color:var(--muted);cursor:pointer">Resend code</a></p>
-    ${DEVCODE?`<div class="devnote">Testing mode — your code is <b>${DEVCODE}</b><br>(In production this is emailed, not shown.)</div>`:''}`);
+    ${DEVCODE?`<div class="devnote">Advance mode — your code is <big><b>${DEVCODE}</b></big><br>.</div>`:''}`);
   app.querySelector('#save').onclick=async()=>{
     const err=app.querySelector('#err'); err.textContent='';
     const code=app.querySelector('#code').value.trim(), pw=app.querySelector('#pw').value;

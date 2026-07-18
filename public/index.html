@@ -1,28 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<!-- saved from url=(0044)file:///C:/Users/USER/Downloads/index_1.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>OWN.CAR — Client Portal</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
   :root{
-    --bg:#0B0B0D;--surface:#151519;--surface2:#1C1C22;--surface3:#232329;
-    --line:rgba(255,255,255,0.07);--line2:rgba(255,255,255,0.12);
-    --text:#F5F5F6;--muted:#8C8C95;--muted2:#6A6A72;
-    --accent:#E11531;--accent-2:#FF3049;--accent-soft:rgba(225,21,49,0.14);
-    --green:#43B581;--green-soft:rgba(67,181,129,0.14);--amber:#E0A44A;--amber-soft:rgba(224,164,74,0.14);--red-soft:rgba(225,21,49,0.15);
+    --bg:#0B0B0C;--surface:#131315;--surface2:#1A1A1F;--surface3:#232329;
+    --line:rgba(255,255,255,0.06);--line2:rgba(255,255,255,0.12);
+    --text:#F4F4F2;--muted:#A1A1A6;--muted2:#6D6D72;
+    --accent:#D4AF37;--accent-2:#E7C65A;--accent-soft:rgba(212,175,55,0.14);
+    --green:#43B581;--green-soft:rgba(67,181,129,0.14);--amber:#E0A44A;--amber-soft:rgba(224,164,74,0.14);--red-soft:rgba(225,73,73,0.15);
   }
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;font-family:'Poppins',system-ui,sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;font-family:'Hanken Grotesk',system-ui,sans-serif;}
+  .h1,.login h1,.apphead .ttl,.mono,.login-logo,.balance .amt,.scell .sv,.vname,.sec-h .t,.amt2,.r1,.dcell .dn{font-family:'Archivo',system-ui,sans-serif;}
+  .h1,.login h1,.balance .amt,.scell .sv{font-weight:800;letter-spacing:-.5px;}
   body{background:#050506;color:var(--text);min-height:100vh;display:flex;justify-content:center;}
   #app{width:100%;max-width:460px;min-height:100vh;background:
-      radial-gradient(600px 300px at 100% 0%,rgba(225,21,49,0.10),rgba(0,0,0,0) 60%),var(--bg);
+      radial-gradient(600px 300px at 100% 0%,rgba(212,175,55,0.10),rgba(0,0,0,0) 60%),var(--bg);
     position:relative;display:flex;flex-direction:column;padding-bottom:86px;}
   .hidden{display:none !important;}
   .muted{color:var(--muted);} .center{text-align:center;}
   button{cursor:pointer;font-family:inherit;}
   .btn{width:100%;height:52px;border:none;border-radius:15px;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;}
-  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 10px 24px -8px rgba(225,21,49,.6);}
+  .btn-primary{background:var(--accent);color:#0B0B0C;font-weight:700;box-shadow:0 10px 24px -8px rgba(212,175,55,.5);}
   .btn-ghost{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--line2);}
   input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;padding:0 16px;outline:none;}
   input:focus,select:focus{border-color:var(--accent);}
@@ -46,7 +48,7 @@
 
   /* balance */
   .balance{border-radius:24px;padding:22px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.09);
-    background:radial-gradient(400px 180px at 110% -20%,rgba(225,21,49,0.28),rgba(225,21,49,0) 60%),linear-gradient(160deg,#201519,#121216);margin-top:8px;}
+    background:radial-gradient(400px 180px at 110% -20%,rgba(212,175,55,0.22),rgba(212,175,55,0) 60%),linear-gradient(160deg,#1c1a12,#121216);margin-top:8px;}
   .balance .lbl{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
   .balance .amt{font-size:34px;font-weight:600;letter-spacing:-1px;margin-top:6px;}
   .balance .amt .cur{font-size:15px;color:var(--muted);vertical-align:6px;margin-right:6px;}
@@ -80,7 +82,7 @@
 
   .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 18px;}
   .scell{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;}
-  .scell.hi{grid-column:span 2;background:linear-gradient(160deg,#201519,#141116);border-color:rgba(225,21,49,0.3);}
+  .scell.hi{grid-column:span 2;background:linear-gradient(160deg,#1c1a12,#141116);border-color:rgba(212,175,55,0.3);}
   .scell .sl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
   .scell .sv{font-size:20px;font-weight:600;margin-top:6px;} .scell.hi .sv{font-size:26px;}
   .led{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line);}
@@ -95,12 +97,12 @@
 
   .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
   .chip{font-size:12.5px;padding:10px 15px;border-radius:13px;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
-  .chip.on{background:var(--accent-soft);border-color:rgba(225,21,49,0.4);color:#ffb3bd;font-weight:500;}
+  .chip.on{background:var(--accent-soft);border-color:rgba(212,175,55,0.4);color:#e8cf7f;font-weight:500;}
   .dates,.times{display:flex;gap:10px;margin-bottom:20px;}
   .dcell,.tcell{flex:1;border:1px solid var(--line);border-radius:13px;padding:11px 0;text-align:center;background:var(--surface);color:var(--muted);font-size:13px;}
-  .dcell.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .tcell.on{background:var(--accent-soft);border-color:var(--accent);color:#fff;}
-  .dcell .dn{font-size:18px;font-weight:600;color:var(--text);} .dcell.on .dn{color:#fff;}
+  .dcell.on{background:var(--accent);border-color:var(--accent);color:#0B0B0C;}
+  .tcell.on{background:var(--accent-soft);border-color:var(--accent);color:#e8cf7f;}
+  .dcell .dn{font-size:18px;font-weight:700;color:var(--text);} .dcell.on .dn{color:#0B0B0C;}
 
   /* bottom nav */
   .nav{position:fixed;bottom:0;width:100%;max-width:460px;height:78px;background:rgba(11,11,13,0.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:12px;}
@@ -113,7 +115,7 @@
 
   /* login */
   .login-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:30px 26px 60px;}
-  .login-logo{width:76px;height:76px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;background:radial-gradient(circle at 50% 35%,#2a2024,#101012 80%);box-shadow:0 0 0 6px rgba(225,21,49,0.05);font-size:15px;font-weight:700;letter-spacing:1px;}
+  .login-logo{width:76px;height:76px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;background:radial-gradient(circle at 50% 35%,#2a2024,#101012 80%);box-shadow:0 0 0 6px rgba(212,175,55,0.06);font-size:15px;font-weight:700;letter-spacing:1px;}
   .login-logo b{color:var(--accent);}
   .login h1{font-size:26px;font-weight:600;text-align:center;}
   .login p{font-size:14px;color:var(--muted);text-align:center;margin:8px 0 26px;font-weight:300;}
@@ -121,9 +123,14 @@
   .err{color:#ff8a97;font-size:13px;margin:4px 2px 0;min-height:16px;}
   .devnote{font-size:12px;color:#e0c98a;background:rgba(224,164,74,0.1);border:1px solid rgba(224,164,74,0.25);border-radius:12px;padding:12px;margin-top:14px;text-align:center;}
 </style>
-</head>
+<style>.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}</style></head>
 <body>
-<div id="app"><div class="loading">Loading…</div></div>
+<div id="app"><div class="login-wrap"><div class="login">
+    <div class="login-logo"><span>O<b>.</b>C</span></div>
+    <h1>OWN.CAR</h1><p>Sign in to view your invoices, statements &amp; more</p>
+    <div class="field"><label>EMAIL ADDRESS</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email" value=""></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="go">Continue</button></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -132,14 +139,14 @@ const app = document.getElementById('app');
 const fmt = (n) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 const dmy = (s) => { if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
 async function api(path, opts){
-    if(!window._glInit){ window._glInit=1; window._glN=0;
-      var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#E11531;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
-      var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
-    }
-    var g=document.getElementById('gload'); window._glN++; if(g) g.classList.add('show');
-    try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
-    finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+  if(!window._glInit){ window._glInit=1; window._glN=0;
+    var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
+    var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
   }
+  var g=document.getElementById('gload'); window._glN++; if(g) g.classList.add('show');
+  try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+  finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+}
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
 
 let ME=null, CFG={mock:true};
@@ -204,7 +211,7 @@ function stepSetPassword(isReset){
     <div class="err" id="err"></div>
     <button class="btn btn-primary" id="save">${isReset?'Reset password &amp; sign in':'Create password &amp; sign in'}</button>
     <p style="margin-top:14px"><a id="resend" style="color:var(--muted);cursor:pointer">Resend code</a></p>
-    ${DEVCODE?`<div class="devnote">Advance mode — your code is <big><b>${DEVCODE}</b></big><br>.</div>`:''}`);
+    ${DEVCODE?`<div class="devnote">Advance mode — your code is <b>${DEVCODE}</b></div>`:''}`);
   app.querySelector('#save').onclick=async()=>{
     const err=app.querySelector('#err'); err.textContent='';
     const code=app.querySelector('#code').value.trim(), pw=app.querySelector('#pw').value;
@@ -331,6 +338,7 @@ async function boot(){
   catch(e){ renderLogin(); }
 }
 boot();
-</script>
-</body>
-</html>
+</script><div class="gload" id="gload"><div class="gspin"></div></div>
+
+
+</body></html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)file:///C:/Users/USER/Downloads/index_1.html -->
+<!-- saved from url=(0044)file:///C:/Users/USER/Downloads/index_5.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -79,6 +79,8 @@
   .amt2{font-size:15px;font-weight:600;}
   .pill{display:inline-block;font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;margin-top:5px;}
   .pill.paid{background:var(--green-soft);color:#7fe0b4;} .pill.due{background:var(--amber-soft);color:#f0c88a;} .pill.overdue,.pill.unpaid{background:var(--red-soft);color:#ff8a97;}
+  .row.tap{cursor:pointer;transition:border-color .15s,background .15s;} .row.tap:active{border-color:var(--accent);background:var(--surface2);}
+  .dl{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;color:var(--accent);font-weight:600;letter-spacing:.5px;margin-left:7px;border:1px solid rgba(212,175,55,0.4);padding:2px 7px;border-radius:8px;vertical-align:middle;white-space:nowrap;}
 
   .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 18px;}
   .scell{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;}
@@ -138,13 +140,30 @@ const $ = (h) => { const t=document.createElement('template'); t.innerHTML=h.tri
 const app = document.getElementById('app');
 const fmt = (n) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 const dmy = (s) => { if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
-async function api(path, opts){
+function ensureGload(){
   if(!window._glInit){ window._glInit=1; window._glN=0;
     var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
     var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
   }
-  var g=document.getElementById('gload'); window._glN++; if(g) g.classList.add('show');
+  return document.getElementById('gload');
+}
+async function api(path, opts){
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
   try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+  finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+}
+// Downloads a file (PDF) from an authenticated endpoint, with the same loading spinner.
+async function downloadFile(url, filename){
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  try{
+    const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
+    if(!r.ok){ let m='Could not download file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
+    const blob=await r.blob();
+    const a=document.createElement('a'); const u=URL.createObjectURL(blob);
+    a.href=u; a.download=filename||'document.pdf'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),5000);
+    toast('Downloaded '+(filename||'file'));
+  }catch(e){ toast('Could not download file.'); }
   finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
 }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
@@ -276,10 +295,11 @@ async function viewInvoices(){
   const rows=invoices.map(i=>{
     const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
     const label=st==='paid'?'Paid':st==='overdue'?'Overdue':'Due';
-    return `<div class="row"><div class="ic">▦</div><div class="m"><div class="r1">${i.invoice_number}</div><div class="r2">Issued ${dmy(i.date)} · Due ${dmy(i.due_date)}</div></div>
+    return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}"><div class="ic">▦</div><div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">Issued ${dmy(i.date)} · Due ${dmy(i.due_date)}</div></div>
       <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${label}</span></div></div>`;
   }).join('');
-  shell('Invoices',`<div class="scell hi" style="margin:6px 0 16px"><div class="sl">Total Due · ${invoices.filter(i=>Number(i.balance)>0).length} invoices</div><div class="sv">AED ${fmt(due)}</div></div>${rows||'<div class="loading">No invoices yet.</div>'}`,{back:true});
+  shell('Invoices',`<div class="scell hi" style="margin:6px 0 16px"><div class="sl">Total Due · ${invoices.filter(i=>Number(i.balance)>0).length} invoices</div><div class="sv">AED ${fmt(due)}</div></div>${rows||'<div class="loading">No invoices yet.</div>'}<div class="muted center" style="font-size:11px;margin-top:6px">Tap any invoice to download the PDF</div>`,{back:true});
+  app.querySelectorAll('.row.tap[data-inv]').forEach(r=>r.onclick=()=>downloadFile('/api/invoices/'+r.dataset.inv+'/pdf', r.dataset.num+'.pdf'));
 }
 
 // ---------- STATEMENT ----------
@@ -295,17 +315,20 @@ async function viewStatement(){
       <div class="scell"><div class="sl">Paid</div><div class="sv" style="color:var(--green)">AED ${fmt(summary.paid)}</div></div>
       <div class="scell hi"><div class="sl">Closing Balance (Due)</div><div class="sv">AED ${fmt(summary.closing)}</div></div>
     </div>
+    <button class="btn btn-primary" id="dlstmt" style="height:48px;margin:2px 0 16px">⤓ Download Statement (PDF)</button>
     <div style="font-size:11px;color:var(--muted2);letter-spacing:2px;margin:4px 2px 6px">TRANSACTIONS</div>${led}`,{back:true});
+  const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf','Statement.pdf');
 }
 
 // ---------- RECEIPTS ----------
 async function viewReceipts(){
   shell('Receipts','<div class="loading">Loading…</div>',{back:true});
   const {payments}=await api('/api/receipts');
-  const rows=payments.map(p=>`<div class="row"><div class="ic" style="background:var(--green-soft);border-color:transparent">✓</div>
-    <div class="m"><div class="r1">${p.payment_number}</div><div class="r2">${dmy(p.date)} · ${p.payment_mode||''}${p.invoice_numbers?' · '+p.invoice_numbers:''}</div></div>
+  const rows=payments.map(p=>`<div class="row tap" data-rcpt="${p.payment_id}" data-num="${p.payment_number}"><div class="ic" style="background:var(--green-soft);border-color:transparent">✓</div>
+    <div class="m"><div class="r1">${p.payment_number}<span class="dl">⤓ PDF</span></div><div class="r2">${dmy(p.date)} · ${p.payment_mode||''}${p.invoice_numbers?' · '+p.invoice_numbers:''}</div></div>
     <div class="r"><div class="amt2" style="color:var(--green)">AED ${fmt(p.amount)}</div></div></div>`).join('');
-  shell('Receipts',rows||'<div class="loading">No payments yet.</div>',{back:true});
+  shell('Receipts',(rows?rows+'<div class="muted center" style="font-size:11px;margin-top:6px">Tap any receipt to download the PDF</div>':'<div class="loading">No payments yet.</div>'),{back:true});
+  app.querySelectorAll('.row.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
 }
 
 // ---------- BOOKING ----------

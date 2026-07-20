@@ -250,6 +250,22 @@ app.get("/api/bookings/availability", requireAuth, async (req, res) => {
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not check availability." }); }
 });
 
+// Returns the bookable window (today .. today+N) with per-day availability, so the
+// client can show only bookable days and grey out full ones.
+app.get("/api/bookings/window", requireAuth, async (req, res) => {
+  try {
+    const now = Date.now();
+    const days = [];
+    for (let i = 0; i <= BOOK_DAYS_AHEAD; i++) {
+      const iso = new Date(now + 4 * 3600 * 1000 + i * 864e5).toISOString().slice(0, 10);
+      const rows = await getBookingsByDate(iso);
+      const takenSlots = rows.map((r) => r.time_slot).filter(Boolean);
+      days.push({ date: iso, takenSlots, count: rows.length, full: rows.length >= MAX_PER_DAY });
+    }
+    res.json({ days });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not load availability." }); }
+});
+
 app.post("/api/bookings", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);

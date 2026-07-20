@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OWN.CAR — Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
+  :root{
+    --bg:#0B0B0C;--surface:#131315;--surface2:#1A1A1F;--surface3:#232329;
+    --line:rgba(255,255,255,0.07);--line2:rgba(255,255,255,0.13);
+    --text:#F4F4F2;--muted:#A1A1A6;--muted2:#6D6D72;
+    --accent:#D4AF37;--accent-2:#E7C65A;--accent-soft:rgba(212,175,55,0.14);
+    --green:#43B581;--green-soft:rgba(67,181,129,0.18);--amber:#E0A44A;--amber-soft:rgba(224,164,74,0.16);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;font-family:'Hanken Grotesk',system-ui,sans-serif;}
+  h1,h2,h3,.disp{font-family:'Archivo',system-ui,sans-serif;}
+  body{background:radial-gradient(700px 340px at 90% -5%,rgba(212,175,55,0.08),rgba(0,0,0,0) 60%),var(--bg);color:var(--text);min-height:100vh;}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px 20px 60px;}
+  button{cursor:pointer;font-family:inherit;}
+  .btn{border:none;border-radius:12px;font-size:14px;font-weight:700;padding:12px 18px;background:var(--accent);color:#0B0B0C;}
+  .btn.ghost{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line2);font-weight:500;}
+  input{width:100%;height:50px;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
+  input:focus{border-color:var(--accent);}
+  label{font-size:12px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;}
+
+  /* login */
+  .login{max-width:380px;margin:8vh auto 0;text-align:center;}
+  .logo{width:70px;height:70px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;background:radial-gradient(circle at 50% 35%,#2a2420,#101012 80%);font-size:15px;font-weight:800;}
+  .logo b{color:var(--accent);}
+  .login h1{font-size:24px;}
+  .login p{color:var(--muted);font-size:14px;margin:6px 0 22px;}
+  .err{color:#ff8a97;font-size:13px;min-height:16px;margin:8px 0 2px;}
+
+  /* header */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+  .top .brand{display:flex;align-items:center;gap:12px;}
+  .top .mono{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;background:radial-gradient(circle at 50% 35%,#241c20,#0e0e10 80%);}
+  .top .mono b{color:var(--accent);}
+  .top h1{font-size:19px;}
+  .top small{display:block;font-size:9px;color:var(--muted2);letter-spacing:2px;}
+  .pillinfo{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:5px 11px;}
+
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;}
+  @media(max-width:820px){ .grid{grid-template-columns:1fr;} }
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;}
+  .card h2{font-size:15px;margin-bottom:14px;}
+
+  /* calendar */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .cal-head .m{font-size:15px;font-weight:700;font-family:'Archivo',sans-serif;}
+  .navb{width:34px;height:34px;border-radius:9px;background:var(--surface2);border:1px solid var(--line);color:var(--text);font-size:16px;}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px;}
+  .dow span{text-align:center;font-size:10px;color:var(--muted2);letter-spacing:.5px;}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cell{aspect-ratio:1;border-radius:9px;border:1px solid var(--line);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;color:var(--text);position:relative;}
+  .cell.empty{background:transparent;border:none;}
+  .cell.has{background:var(--green-soft);border-color:rgba(67,181,129,.5);color:#bff0d6;font-weight:700;cursor:pointer;}
+  .cell.sel{outline:2px solid var(--accent);}
+  .cell .cnt{position:absolute;top:3px;right:4px;font-size:9px;background:var(--green);color:#06231a;border-radius:8px;padding:0 5px;font-weight:700;}
+  .cell.today{border-color:var(--accent);}
+  .leg{display:flex;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);}
+  .leg i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px;}
+
+  /* list */
+  .listhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
+  .listhead h2{font-size:16px;}
+  .bk{border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:12px;background:var(--surface2);}
+  .bk .r1{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .bk .who{font-size:15px;font-weight:700;font-family:'Archivo',sans-serif;}
+  .bk .car{font-size:13px;color:var(--accent);margin-top:1px;}
+  .bk .meta{font-size:12.5px;color:var(--muted);margin-top:9px;line-height:1.7;}
+  .bk .meta b{color:var(--text);font-weight:600;}
+  .bk .desc{margin-top:9px;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;white-space:pre-wrap;}
+  .stbtn{border:none;border-radius:10px;font-size:12px;font-weight:700;padding:9px 13px;white-space:nowrap;flex:0 0 auto;}
+  .st-not{background:var(--amber-soft);color:#f0c88a;border:1px solid rgba(224,164,74,.4);}
+  .st-conf{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(212,175,55,.5);}
+  .st-done{background:var(--green-soft);color:#7fe0b4;border:1px solid rgba(67,181,129,.5);}
+  .empty-msg{color:var(--muted);text-align:center;padding:30px 0;font-size:14px;}
+  .hint{font-size:11px;color:var(--muted2);margin-top:2px;}
+  .gload{position:fixed;inset:0;background:rgba(5,5,7,.5);display:none;align-items:center;justify-content:center;z-index:200;}
+  .gload.show{display:flex;} .gspin{width:40px;height:40px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:sp .7s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="gload" id="gload"><div class="gspin"></div></div>
+<div class="wrap" id="app"></div>
+<script>
+const $=(h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild;};
+const app=document.getElementById('app');
+const gload=document.getElementById('gload');
+const STATUSES=['Not confirmed yet','Confirmed','Service done'];
+const stClass={'Not confirmed yet':'st-not','Confirmed':'st-conf','Service done':'st-done'};
+let BOOKINGS=[], VY, VM, SEL=null, STORAGE='';
+
+async function api(path,opts){
+  gload.classList.add('show');
+  try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+  finally{ gload.classList.remove('show'); }
+}
+const two=(n)=>String(n).padStart(2,'0');
+const isoOf=(y,m,d)=>`${y}-${two(m+1)}-${two(d)}`;
+const fmtDate=(s)=>{ if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+const esc=(s)=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// ---------- LOGIN ----------
+function renderLogin(msg){
+  app.innerHTML='';
+  app.appendChild($(`<div class="login">
+    <div class="logo"><span>O<b>.</b>C</span></div>
+    <h1>OWN.CAR Admin</h1>
+    <p>Staff access only</p>
+    <label style="text-align:left">PASSWORD</label>
+    <input id="pw" type="password" placeholder="Enter admin password" autocomplete="current-password">
+    <div class="err" id="err">${msg||''}</div>
+    <button class="btn" style="width:100%;margin-top:6px" id="go">Sign in</button>
+  </div>`));
+  const go=async()=>{
+    const pw=document.getElementById('pw').value;
+    try{ await api('/api/admin/login',{method:'POST',body:JSON.stringify({password:pw})}); boot(); }
+    catch(e){ document.getElementById('err').textContent=(e&&e.error)||'Wrong password.'; }
+  };
+  document.getElementById('go').onclick=go;
+  document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+}
+
+// ---------- DASHBOARD ----------
+async function loadBookings(){
+  const d=await api('/api/admin/bookings');
+  BOOKINGS=(d.bookings||[]).slice();
+}
+function countByDate(){
+  const m={};
+  BOOKINGS.forEach(b=>{ const k=(b.preferred_date||'').slice(0,10); if(k) m[k]=(m[k]||0)+1; });
+  return m;
+}
+function renderDash(){
+  app.innerHTML='';
+  const now=new Date();
+  if(VY===undefined){ VY=now.getFullYear(); VM=now.getMonth(); }
+  app.appendChild($(`<div class="top">
+    <div class="brand"><div class="mono"><span>O<b>.</b>C</span></div><div><h1>OWN.CAR Admin<small>MAINTENANCE BOOKINGS</small></h1></div></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="pillinfo">${BOOKINGS.length} total · storage: ${esc(STORAGE)}</span>
+      <button class="btn ghost" id="logout">Sign out</button>
+    </div>
+  </div>`));
+  const grid=$(`<div class="grid"></div>`);
+  grid.appendChild(buildCalendar());
+  grid.appendChild(buildList());
+  app.appendChild(grid);
+  document.getElementById('logout').onclick=async()=>{ await api('/api/admin/logout',{method:'POST'}); renderLogin(); };
+}
+
+function buildCalendar(){
+  const counts=countByDate();
+  const first=new Date(VY,VM,1);
+  const startDow=first.getDay();
+  const daysInMonth=new Date(VY,VM+1,0).getDate();
+  const monthName=first.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const todayIso=isoOf(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
+  const card=$(`<div class="card"></div>`);
+  card.appendChild($(`<div class="cal-head"><button class="navb" id="pm">‹</button><div class="m">${monthName}</div><button class="navb" id="nm">›</button></div>`));
+  card.appendChild($(`<div class="dow"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>`));
+  const cal=$(`<div class="cal"></div>`);
+  for(let i=0;i<startDow;i++) cal.appendChild($(`<div class="cell empty"></div>`));
+  for(let d=1;d<=daysInMonth;d++){
+    const iso=isoOf(VY,VM,d);
+    const c=counts[iso]||0;
+    const cls=['cell']; if(c>0) cls.push('has'); if(iso===todayIso) cls.push('today'); if(iso===SEL) cls.push('sel');
+    const cell=$(`<div class="${cls.join(' ')}">${c>0?`<span class="cnt">${c}</span>`:''}<span>${d}</span></div>`);
+    if(c>0) cell.onclick=()=>{ SEL=(SEL===iso?null:iso); renderDash(); };
+    cal.appendChild(cell);
+  }
+  card.appendChild(cal);
+  card.appendChild($(`<div class="leg"><span><i style="background:var(--green)"></i>Has appointments</span><span><i style="background:var(--surface2);border:1px solid var(--line)"></i>None</span></div>`));
+  card.appendChild($(`<div class="hint">Tap a green date to see that day's appointments.</div>`));
+  setTimeout(()=>{ const p=document.getElementById('pm'),n=document.getElementById('nm'); if(p)p.onclick=()=>{ VM--; if(VM<0){VM=11;VY--;} renderDash(); }; if(n)n.onclick=()=>{ VM++; if(VM>11){VM=0;VY++;} renderDash(); }; },0);
+  return card;
+}
+
+function buildList(){
+  const card=$(`<div class="card"></div>`);
+  let list=BOOKINGS.slice().sort((a,b)=>(b.preferred_date||'').localeCompare(a.preferred_date||''));
+  if(SEL) list=list.filter(b=>(b.preferred_date||'').slice(0,10)===SEL);
+  const head=$(`<div class="listhead"><h2>${SEL?('Appointments on '+fmtDate(SEL)+' ('+list.length+')'):('All appointments ('+list.length+')')}</h2>${SEL?'<button class="btn ghost" id="showall">Show all</button>':''}</div>`);
+  card.appendChild(head);
+  if(!list.length){ card.appendChild($(`<div class="empty-msg">No appointments${SEL?' on this day':' yet'}.</div>`)); }
+  list.forEach(b=>{
+    const st=b.status||'Not confirmed yet';
+    const card2=$(`<div class="bk">
+      <div class="r1">
+        <div><div class="who">${esc(b.customer_name||b.customer_email||'Customer')}</div><div class="car">${esc(b.car_name||'')} ${b.plate?('· '+esc(b.plate)):''}</div></div>
+        <button class="stbtn ${stClass[st]}" data-id="${esc(b.id)}">${esc(st)}</button>
+      </div>
+      <div class="meta"><b>Date:</b> ${fmtDate(b.preferred_date)} &nbsp; <b>Time:</b> ${esc(b.time_slot||'-')} &nbsp; <b>Service:</b> ${esc(b.service_type||'-')}<br>
+        <b>Phone:</b> ${esc(b.phone||'-')} &nbsp; <b>Email:</b> ${esc(b.customer_email||'-')}</div>
+      ${b.description?`<div class="desc">${esc(b.description)}</div>`:''}
+    </div>`);
+    const btn=card2.querySelector('.stbtn');
+    btn.onclick=async()=>{
+      const cur=btn.textContent.trim();
+      const next=STATUSES[(STATUSES.indexOf(cur)+1)%STATUSES.length];
+      try{ await api('/api/admin/bookings/'+encodeURIComponent(b.id)+'/status',{method:'POST',body:JSON.stringify({status:next})});
+        b.status=next; btn.textContent=next; btn.className='stbtn '+stClass[next];
+      }catch(e){ alert((e&&e.error)||'Could not update status.'); }
+    };
+    card.appendChild(card2);
+  });
+  setTimeout(()=>{ const s=document.getElementById('showall'); if(s) s.onclick=()=>{ SEL=null; renderDash(); }; },0);
+  return card;
+}
+
+// ---------- BOOT ----------
+async function boot(){
+  try{ const me=await api('/api/admin/me'); STORAGE=me.storage||''; await loadBookings(); renderDash(); }
+  catch(e){ renderLogin(); }
+}
+boot();
+</script>
+</body>
+</html>

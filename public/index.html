@@ -248,7 +248,7 @@ function shell(title, bodyHtml, opts={}){
   const head = opts.back
     ? `<div class="apphead"><div class="left"><button class="backbtn" id="back">‹</button><div class="apphead-title" style="font-size:17px;font-weight:600">${title}</div></div></div>`
     : `<div class="apphead"><div class="left"><div class="mono"><span>O<b>.</b>C</span></div><div class="ttl">OWN.CAR<small>CLIENT PORTAL</small></div></div>
-       <button class="iconbtn" id="logout" title="Sign out">⏻</button></div>`;
+       <button class="iconbtn" id="logout" title="Sign out" style="width:auto;padding:0 13px;gap:7px;font-size:12.5px;font-weight:500">⏻ Sign out</button></div>`;
   app.appendChild($(`<div>${head}<div class="body">${bodyHtml}</div></div>`));
   app.appendChild(navBar());
   const b=document.getElementById('back'); if(b) b.onclick=()=>go('home');

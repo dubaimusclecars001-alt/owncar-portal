@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
-import { saveBooking, listBookings, updateBookingStatus, usingSupabase } from "./src/store.js";
+import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -231,6 +231,25 @@ app.get("/api/statement/pdf", requireAuth, async (req, res) => {
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not generate the statement." }); }
 });
 
+// ---- Booking rules ----
+const MAX_PER_DAY = 4;                 // at most 4 appointments per day
+const BOOK_DAYS_AHEAD = 3;             // bookings allowed up to 3 days from today
+// Dates are computed in Dubai time (UTC+4) so the window matches the client.
+const dubaiToday = () => new Date(Date.now() + 4 * 3600 * 1000).toISOString().slice(0, 10);
+const dubaiMax = () => new Date(Date.now() + 4 * 3600 * 1000 + BOOK_DAYS_AHEAD * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+// Tells the client which slots are already taken for a date (no customer details leaked).
+app.get("/api/bookings/availability", requireAuth, async (req, res) => {
+  try {
+    const date = (req.query.date || "").slice(0, 10);
+    const maxDate = dubaiMax(), minDate = dubaiToday();
+    if (!date) return res.json({ date, takenSlots: [], count: 0, full: false, minDate, maxDate });
+    const rows = await getBookingsByDate(date);
+    const takenSlots = rows.map((r) => r.time_slot).filter(Boolean);
+    res.json({ date, takenSlots, count: rows.length, full: rows.length >= MAX_PER_DAY, minDate, maxDate });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not check availability." }); }
+});
+
 app.post("/api/bookings", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);
@@ -247,6 +266,16 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
       created: new Date().toISOString(),
       status: "Not confirmed yet",
     };
+    // Enforce the booking window (within the next few days).
+    if (!booking.preferred_date || booking.preferred_date < dubaiToday() || booking.preferred_date > dubaiMax()) {
+      return res.status(400).json({ error: "Please choose an available date." });
+    }
+    // Enforce the per-day cap and prevent double-booking a slot.
+    const dayRows = await getBookingsByDate(booking.preferred_date);
+    if (dayRows.length >= MAX_PER_DAY) return res.status(409).json({ error: "That day is fully booked. Please choose another date." });
+    if (booking.time_slot && dayRows.some((r) => r.time_slot === booking.time_slot)) {
+      return res.status(409).json({ error: "That time slot was just taken. Please pick another." });
+    }
     const saved = await saveBooking(booking);
     res.json({ ok: true, id: saved && saved.id });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not submit booking." }); }

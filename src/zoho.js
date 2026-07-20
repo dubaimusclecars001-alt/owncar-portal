@@ -59,9 +59,11 @@ export async function getCustomerByEmail(email) {
 }
 
 export async function getInvoices(contactId) {
-  if (USE_MOCK) return mockInvoices.filter((i) => i.contact_id === contactId);
+  // Void (cancelled) invoices are never shown to the customer.
+  const notVoid = (i) => (i.status || "").toLowerCase() !== "void";
+  if (USE_MOCK) return mockInvoices.filter((i) => i.contact_id === contactId && notVoid(i));
   const data = await booksGet("invoices", { customer_id: contactId });
-  return (data.invoices || []).map((i) => ({
+  return (data.invoices || []).filter(notVoid).map((i) => ({
     invoice_id: i.invoice_id,
     contact_id: contactId,
     invoice_number: i.invoice_number,

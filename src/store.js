@@ -57,6 +57,16 @@ export async function listBookings() {
   return readFile().sort((a, b) => (b.preferred_date || "").localeCompare(a.preferred_date || ""));
 }
 
+// Returns the bookings already made for a given date (used to cap slots per day).
+export async function getBookingsByDate(date) {
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?preferred_date=eq.${encodeURIComponent(date)}&select=time_slot,status`, { headers: supaHeaders() });
+    if (!res.ok) throw new Error("Supabase byDate " + res.status + ": " + (await res.text().catch(() => "")));
+    return await res.json();
+  }
+  return readFile().filter((b) => (b.preferred_date || "") === date);
+}
+
 export async function updateBookingStatus(id, status) {
   if (usingSupabase) {
     const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, {

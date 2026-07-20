@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
+import { saveBooking, listBookings, updateBookingStatus, usingSupabase } from "./src/store.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -72,7 +73,7 @@ app.post("/api/auth/check", async (req, res) => {
     if (!email) return res.status(400).json({ error: "Email required" });
     const customer = await getCustomerByEmail(email);
     if (!customer) return res.status(404).json({ error: "We couldn't find an account for that email. Please contact us." });
-    const u = getUser(email);
+    const u = await getUser(email);
     res.json({ ok: true, hasPassword: !!(u && u.hash) });
   } catch (e) { console.error(e); res.status(500).json({ error: "Something went wrong. Please try again." }); }
 });
@@ -104,8 +105,10 @@ app.post("/api/auth/set-password", async (req, res) => {
   if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters." });
   const customer = await getCustomerByEmail(email);
   if (!customer) return res.status(404).json({ error: "Account not found." });
+  try {
+    await setUserPassword(email, password);
+  } catch (e) { console.error(e); return res.status(500).json({ error: "Could not save your password. Please try again." }); }
   codes.delete(email);
-  setUserPassword(email, password);
   req.session.email = email;
   res.json({ ok: true });
 });
@@ -116,7 +119,9 @@ app.post("/api/auth/login", async (req, res) => {
   const password = req.body.password || "";
   const customer = await getCustomerByEmail(email);
   if (!customer) return res.status(404).json({ error: "We couldn't find an account for that email." });
-  if (!verifyUserPassword(email, password)) return res.status(401).json({ error: "Incorrect password." });
+  try {
+    if (!(await verifyUserPassword(email, password))) return res.status(401).json({ error: "Incorrect password." });
+  } catch (e) { console.error(e); return res.status(500).json({ error: "Sign-in failed. Please try again." }); }
   req.session.email = email;
   res.json({ ok: true });
 });
@@ -132,7 +137,7 @@ app.get("/api/me", requireAuth, async (req, res) => {
     const outstanding = invoices.reduce((s, i) => s + money(i.balance), 0);
     const nextDue = invoices.filter(i => money(i.balance) > 0).sort((a,b)=> (a.due_date||"").localeCompare(b.due_date||""))[0];
     res.json({
-      name: c.contact_name, email: c.email, vehicle: c.vehicle,
+      name: c.contact_name, email: c.email, vehicle: c.vehicle, phone: c.phone || null,
       outstanding, nextDueDate: nextDue ? nextDue.due_date : null,
     });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load your account from Zoho Books." }); }
@@ -232,30 +237,50 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
     const booking = {
       customer_email: c.email,
       customer_name: c.contact_name || "",
-      customer_phone: c.phone || null,
-      vehicle: (req.body.vehicle || "").slice(0, 120),
+      car_name: (req.body.car_name || "").slice(0, 120),
+      plate: (req.body.plate || "").slice(0, 40),
+      phone: (req.body.phone || c.phone || "").slice(0, 40),
       service_type: (req.body.service_type || "").slice(0, 60),
-      preferred_date: (req.body.preferred_date || "").slice(0, 40),
+      preferred_date: (req.body.preferred_date || "").slice(0, 20),
       time_slot: (req.body.time_slot || "").slice(0, 20),
-      notes: (req.body.notes || "").slice(0, 500),
+      description: (req.body.description || "").slice(0, 1000),
       created: new Date().toISOString(),
-      status: "Requested",
+      status: "Not confirmed yet",
     };
-    // Save a local copy (best-effort; disk is ephemeral on Render, so email is the real delivery).
-    try {
-      const dir = path.join(__dirname, "data");
-      fs.mkdirSync(dir, { recursive: true });
-      const file = path.join(dir, "bookings.json");
-      const all = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
-      all.push(booking);
-      fs.writeFileSync(file, JSON.stringify(all, null, 2));
-    } catch (e) { console.error("booking save failed:", e.message); }
-    const notice = await sendBookingNotice(booking);
-    res.json({ ok: true, emailed: !!(notice && notice.delivered) });
+    const saved = await saveBooking(booking);
+    res.json({ ok: true, id: saved && saved.id });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not submit booking." }); }
 });
 
 app.get("/api/config", (req, res) => res.json({ mock: USE_MOCK, emailConfigured }));
+
+// ---- Admin (staff) area — protected by ADMIN_PASSWORD ----
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "owncar-admin";
+const STATUSES = ["Not confirmed yet", "Confirmed", "Service done"];
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.admin) return next();
+  return res.status(401).json({ error: "Admin sign-in required" });
+}
+app.post("/api/admin/login", (req, res) => {
+  const pw = req.body.password || "";
+  if (pw && pw === ADMIN_PASSWORD) { req.session.admin = true; return res.json({ ok: true }); }
+  return res.status(401).json({ error: "Wrong password." });
+});
+app.post("/api/admin/logout", (req, res) => { if (req.session) req.session.admin = false; res.json({ ok: true }); });
+app.get("/api/admin/me", requireAdmin, (req, res) => res.json({ ok: true, storage: usingSupabase ? "database" : "file (not permanent)" }));
+app.get("/api/admin/bookings", requireAdmin, async (req, res) => {
+  try { res.json({ bookings: await listBookings() }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not load bookings." }); }
+});
+app.post("/api/admin/bookings/:id/status", requireAdmin, async (req, res) => {
+  try {
+    const status = req.body.status;
+    if (!STATUSES.includes(status)) return res.status(400).json({ error: "Invalid status." });
+    const booking = await updateBookingStatus(req.params.id, status);
+    res.json({ ok: true, booking });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not update status." }); }
+});
+app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 
 // ---- static frontend ----
 app.use(express.static(path.join(__dirname, "public")));

@@ -233,16 +233,18 @@ app.get("/api/statement/pdf", requireAuth, async (req, res) => {
 
 // ---- Booking rules ----
 const MAX_PER_DAY = 4;                 // at most 4 appointments per day
-const BOOK_DAYS_AHEAD = 3;             // bookings allowed up to 3 days from today
+const BOOK_LEAD_DAYS = 4;              // earliest bookable day = today + 4 (the next 3 days are blocked)
+const BOOK_WINDOW_DAYS = 7;            // number of days open for booking from the first available day
 // Dates are computed in Dubai time (UTC+4) so the window matches the client.
-const dubaiToday = () => new Date(Date.now() + 4 * 3600 * 1000).toISOString().slice(0, 10);
-const dubaiMax = () => new Date(Date.now() + 4 * 3600 * 1000 + BOOK_DAYS_AHEAD * 24 * 3600 * 1000).toISOString().slice(0, 10);
+const dubaiPlus = (n) => new Date(Date.now() + 4 * 3600 * 1000 + n * 864e5).toISOString().slice(0, 10);
+const firstBookable = () => dubaiPlus(BOOK_LEAD_DAYS);
+const lastBookable = () => dubaiPlus(BOOK_LEAD_DAYS + BOOK_WINDOW_DAYS - 1);
 
 // Tells the client which slots are already taken for a date (no customer details leaked).
 app.get("/api/bookings/availability", requireAuth, async (req, res) => {
   try {
     const date = (req.query.date || "").slice(0, 10);
-    const maxDate = dubaiMax(), minDate = dubaiToday();
+    const maxDate = lastBookable(), minDate = firstBookable();
     if (!date) return res.json({ date, takenSlots: [], count: 0, full: false, minDate, maxDate });
     const rows = await getBookingsByDate(date);
     const takenSlots = rows.map((r) => r.time_slot).filter(Boolean);
@@ -254,10 +256,9 @@ app.get("/api/bookings/availability", requireAuth, async (req, res) => {
 // client can show only bookable days and grey out full ones.
 app.get("/api/bookings/window", requireAuth, async (req, res) => {
   try {
-    const now = Date.now();
     const days = [];
-    for (let i = 0; i <= BOOK_DAYS_AHEAD; i++) {
-      const iso = new Date(now + 4 * 3600 * 1000 + i * 864e5).toISOString().slice(0, 10);
+    for (let i = BOOK_LEAD_DAYS; i < BOOK_LEAD_DAYS + BOOK_WINDOW_DAYS; i++) {
+      const iso = dubaiPlus(i);
       const rows = await getBookingsByDate(iso);
       const takenSlots = rows.map((r) => r.time_slot).filter(Boolean);
       days.push({ date: iso, takenSlots, count: rows.length, full: rows.length >= MAX_PER_DAY });
@@ -283,7 +284,7 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
       status: "Not confirmed yet",
     };
     // Enforce the booking window (within the next few days).
-    if (!booking.preferred_date || booking.preferred_date < dubaiToday() || booking.preferred_date > dubaiMax()) {
+    if (!booking.preferred_date || booking.preferred_date < firstBookable() || booking.preferred_date > lastBookable()) {
       return res.status(400).json({ error: "Please choose an available date." });
     }
     // Enforce the per-day cap and prevent double-booking a slot.

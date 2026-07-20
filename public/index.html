@@ -350,24 +350,16 @@ async function viewReceipts(){
 }
 
 // ---------- BOOKING (in-app form → saved to backend / Supabase) ----------
-async function viewBooking(){
+function viewBooking(){
   const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
   const times=['09:00','11:30','14:00','16:30'];
   const veh=ME&&ME.vehicle?ME.vehicle.name:'';
   const plate=ME&&ME.vehicle?ME.vehicle.plate:'';
   const phone=ME&&ME.phone?ME.phone:'';
+  // Earliest bookable date = today + 4 (Dubai time); open through ~2 months out.
+  const minIso=new Date(Date.now()+4*3600*1000+4*864e5).toISOString().slice(0,10);
+  const maxIso=new Date(Date.now()+4*3600*1000+63*864e5).toISOString().slice(0,10);
   if(!booking.service_type) booking.service_type='Full Service';
-  shell('Book Maintenance','<div class="loading">Loading…</div>',{back:true});
-  // Fetch only the bookable days (today..+3) with their availability.
-  let days=[];
-  try{ const w=await api('/api/bookings/window'); days=w.days||[]; }catch(e){}
-  const byDate={}; days.forEach(d=>byDate[d.date]=d);
-  // If the previously-picked day is now full or out of window, clear it.
-  if(booking.pdate && (!byDate[booking.pdate] || byDate[booking.pdate].full)) { booking.pdate=null; booking.time=null; }
-  const dow=(iso)=>new Date(iso+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'});
-  const dnum=(iso)=>new Date(iso+'T00:00:00').getDate();
-  const dayBtns=days.map(d=>`<button class="dcell ${d.full?'disabled':''} ${booking.pdate===d.date?'on':''}" data-d="${d.date}">
-      <div style="font-size:10px;text-transform:uppercase">${dow(d.date)}</div><div class="dn">${dnum(d.date)}</div>${d.full?'<div class="full">Full</div>':''}</button>`).join('');
   shell('Book Maintenance',`
     <label>CAR NAME</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}">
     <div style="height:14px"></div>
@@ -376,40 +368,39 @@ async function viewBooking(){
     <label>PHONE NUMBER</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
     <div style="height:16px"></div>
     <label>SERVICE TYPE</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
-    <label>PREFERRED DATE</label><div class="dates" id="dates" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">${dayBtns||'<div class="muted" style="font-size:12px">No dates available right now.</div>'}</div>
+    <label>PREFERRED DATE</label><input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
     <label>TIME SLOT</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
     <div id="slotnote" class="muted" style="font-size:11.5px;margin:-8px 2px 16px;min-height:14px"></div>
     <label>DESCRIPTION OF WORK REQUIRED</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
     <button class="btn btn-primary" id="confirm">Confirm Booking</button>`,{back:true});
   app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
-  function refreshSlots(){
-    const note=app.querySelector('#slotnote');
-    const d=byDate[booking.pdate];
-    const taken=(d&&d.takenSlots)||[];
-    app.querySelectorAll('#times .tcell').forEach(c=>{
-      const t=c.dataset.t; const dis=!booking.pdate||taken.includes(t);
-      c.classList.toggle('disabled',dis); if(dis){ c.classList.remove('on'); if(booking.time===t) booking.time=null; }
-    });
-    note.textContent = !booking.pdate ? 'Pick an available date first.' : (taken.length?'Some times are already taken for this date.':'');
-  }
-  app.querySelectorAll('#dates .dcell').forEach(b=>{ if(b.classList.contains('disabled')) return; b.onclick=()=>{
-    booking.pdate=b.dataset.d; app.querySelectorAll('#dates .dcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); refreshSlots();
-  };});
   app.querySelectorAll('#times .tcell').forEach(b=>b.onclick=()=>{ if(b.classList.contains('disabled')) return; booking.time=b.dataset.t; app.querySelectorAll('#times .tcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
-  refreshSlots();
+  async function refreshSlots(){
+    const pdate=app.querySelector('#pdate').value;
+    const note=app.querySelector('#slotnote');
+    const cells=app.querySelectorAll('#times .tcell');
+    cells.forEach(c=>c.classList.remove('disabled'));
+    if(!pdate){ note.textContent='Pick a date to see available times.'; return; }
+    let taken=[], full=false;
+    try{ const a=await api('/api/bookings/availability?date='+encodeURIComponent(pdate)); taken=a.takenSlots||[]; full=!!a.full; }catch(e){}
+    cells.forEach(c=>{ const t=c.dataset.t; if(full||taken.includes(t)){ c.classList.add('disabled'); c.classList.remove('on'); if(booking.time===t) booking.time=null; } });
+    note.textContent = full ? 'This day is fully booked — please choose another date.' : (taken.length?'Some times are already taken for this date.':'');
+  }
+  app.querySelector('#pdate').onchange=()=>{ booking.pdate=app.querySelector('#pdate').value; refreshSlots(); };
+  if(booking.pdate) refreshSlots();
   app.querySelector('#confirm').onclick=async()=>{
-    const car=app.querySelector('#car').value.trim(), plateV=app.querySelector('#plate').value.trim(), phoneV=app.querySelector('#phone').value.trim(), desc=app.querySelector('#desc').value.trim();
+    const car=app.querySelector('#car').value.trim(), plateV=app.querySelector('#plate').value.trim(), phoneV=app.querySelector('#phone').value.trim(), pdate=app.querySelector('#pdate').value, desc=app.querySelector('#desc').value.trim();
     if(!car){ toast('Please enter the car name.'); return; }
     if(!plateV){ toast('Please enter the number plate.'); return; }
     if(!phoneV){ toast('Please enter a phone number.'); return; }
-    if(!booking.pdate){ toast('Please choose an available date.'); return; }
+    if(!pdate){ toast('Please choose a preferred date.'); return; }
     if(!booking.time){ toast('Please pick a time slot.'); return; }
     if(!desc){ toast('Please describe the work required.'); return; }
-    booking.desc=desc;
+    booking.pdate=pdate; booking.desc=desc;
     try{
-      await api('/api/bookings',{method:'POST',body:JSON.stringify({car_name:car,plate:plateV,phone:phoneV,service_type:booking.service_type,preferred_date:booking.pdate,time_slot:booking.time,description:desc})});
+      await api('/api/bookings',{method:'POST',body:JSON.stringify({car_name:car,plate:plateV,phone:phoneV,service_type:booking.service_type,preferred_date:pdate,time_slot:booking.time,description:desc})});
       showConfirmModal();
-    }catch(e){ toast((e&&e.error)||'Could not submit.'); booking.time=null; viewBooking(); }
+    }catch(e){ toast((e&&e.error)||'Could not submit.'); refreshSlots(); }
   };
 }
 function showConfirmModal(){

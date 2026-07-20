@@ -234,7 +234,7 @@ app.get("/api/statement/pdf", requireAuth, async (req, res) => {
 // ---- Booking rules ----
 const MAX_PER_DAY = 4;                 // at most 4 appointments per day
 const BOOK_LEAD_DAYS = 4;              // earliest bookable day = today + 4 (the next 3 days are blocked)
-const BOOK_WINDOW_DAYS = 7;            // number of days open for booking from the first available day
+const BOOK_WINDOW_DAYS = 60;           // booking open for ~2 months from the first available day
 // Dates are computed in Dubai time (UTC+4) so the window matches the client.
 const dubaiPlus = (n) => new Date(Date.now() + 4 * 3600 * 1000 + n * 864e5).toISOString().slice(0, 10);
 const firstBookable = () => dubaiPlus(BOOK_LEAD_DAYS);

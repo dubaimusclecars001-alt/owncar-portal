@@ -30,6 +30,10 @@
   input:focus,select:focus{border-color:var(--accent);}
   .drange{display:flex;gap:10px;margin:2px 0 4px;} .dfield{flex:1;min-width:0;}
   input[type=date]{color-scheme:dark;padding:0 12px;} input[type=date]::-webkit-calendar-picker-indicator{filter:invert(76%) sepia(38%) saturate(560%) hue-rotate(1deg);cursor:pointer;}
+  textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;padding:12px 16px;outline:none;resize:vertical;font-family:inherit;}
+  textarea:focus{border-color:var(--accent);}
+  .modal-ov{position:fixed;inset:0;background:rgba(5,5,7,.72);display:flex;align-items:center;justify-content:center;z-index:300;padding:26px;}
+  .modal-card{background:var(--surface);border:1px solid var(--line2);border-radius:22px;padding:28px 24px;max-width:360px;width:100%;text-align:center;}
   label{font-size:12px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;}
 
   /* header */
@@ -342,27 +346,51 @@ async function viewReceipts(){
   app.querySelectorAll('.row.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
 }
 
-// ---------- BOOKING ----------
+// ---------- BOOKING (in-app form → saved to backend / Supabase) ----------
 function viewBooking(){
   const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
-  const today=new Date(); const days=[...Array(4)].map((_,k)=>{const d=new Date(today);d.setDate(d.getDate()+k+1);return d;});
   const times=['09:00','11:30','14:00','16:30'];
-  const veh=ME&&ME.vehicle?ME.vehicle.name:'Your vehicle';
+  const veh=ME&&ME.vehicle?ME.vehicle.name:'';
+  const plate=ME&&ME.vehicle?ME.vehicle.plate:'';
+  const phone=ME&&ME.phone?ME.phone:'';
+  const todayIso=new Date().toISOString().slice(0,10);
+  if(!booking.service_type) booking.service_type='Full Service';
   shell('Book Maintenance',`
-    <label>VEHICLE</label><div class="row" style="margin-bottom:20px"><div class="ic">⚙</div><div class="m"><div class="r1">${veh}</div><div class="r2">${ME&&ME.vehicle?ME.vehicle.plate:''}</div></div></div>
+    <label>CAR NAME</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}">
+    <div style="height:14px"></div>
+    <label>NUMBER PLATE</label><input id="plate" placeholder="e.g. DXB A 12345" value="${plate||''}">
+    <div style="height:14px"></div>
+    <label>PHONE NUMBER</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
+    <div style="height:16px"></div>
     <label>SERVICE TYPE</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
-    <label>PREFERRED DATE</label><div class="dates" id="dates">${days.map((d,i)=>`<button class="dcell ${booking.date===i?'on':''}" data-d="${i}"><div style="font-size:10px;text-transform:uppercase">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div><div class="dn">${d.getDate()}</div></button>`).join('')}</div>
+    <label>PREFERRED DATE</label><input type="date" id="pdate" min="${todayIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
     <label>TIME SLOT</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+    <label>DESCRIPTION OF WORK REQUIRED</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
     <button class="btn btn-primary" id="confirm">Confirm Booking</button>`,{back:true});
-  const pick=(sel,attr,key,val)=>{ app.querySelectorAll(sel).forEach(b=>b.onclick=()=>{ booking[key]=b.dataset[attr]===undefined?val:(attr==='d'?Number(b.dataset[attr]):b.dataset[attr]); app.querySelectorAll(sel).forEach(x=>x.classList.remove('on')); b.classList.add('on'); }); };
-  pick('#chips .chip','s','service_type'); pick('#dates .dcell','d','date'); pick('#times .tcell','t','time');
+  app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  app.querySelectorAll('#times .tcell').forEach(b=>b.onclick=()=>{ booking.time=b.dataset.t; app.querySelectorAll('#times .tcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
   app.querySelector('#confirm').onclick=async()=>{
-    if(booking.date===null||!booking.time){ toast('Please pick a date and time.'); return; }
-    const days2=days; const d=days2[booking.date];
-    try{ const r=await api('/api/bookings',{method:'POST',body:JSON.stringify({vehicle:veh,service_type:booking.service_type,preferred_date:d.toLocaleDateString('en-GB'),time_slot:booking.time})});
-      toast(r&&r.emailed?'Booking sent — our team has been notified.':'Booking received — we’ll confirm shortly.'); setTimeout(()=>go('home'),1400);
+    const car=app.querySelector('#car').value.trim(), plateV=app.querySelector('#plate').value.trim(), phoneV=app.querySelector('#phone').value.trim(), pdate=app.querySelector('#pdate').value, desc=app.querySelector('#desc').value.trim();
+    if(!car){ toast('Please enter the car name.'); return; }
+    if(!plateV){ toast('Please enter the number plate.'); return; }
+    if(!phoneV){ toast('Please enter a phone number.'); return; }
+    if(!pdate){ toast('Please choose a preferred date.'); return; }
+    if(!booking.time){ toast('Please pick a time slot.'); return; }
+    if(!desc){ toast('Please describe the work required.'); return; }
+    try{
+      await api('/api/bookings',{method:'POST',body:JSON.stringify({car_name:car,plate:plateV,phone:phoneV,service_type:booking.service_type,preferred_date:pdate,time_slot:booking.time,description:desc})});
+      showConfirmModal();
     }catch(e){ toast((e&&e.error)||'Could not submit.'); }
   };
+}
+function showConfirmModal(){
+  const ov=$(`<div class="modal-ov"><div class="modal-card">
+    <div class="rcpt-check" style="margin:0 auto 14px">✓</div>
+    <div style="font-size:19px;font-weight:800;font-family:'Archivo',system-ui,sans-serif">Booking received</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you! You'll receive a confirmation from <b style="color:var(--accent)">info@own.car</b>.</p>
+    <button class="btn btn-primary" id="mok">OK</button></div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#mok').onclick=()=>{ ov.remove(); booking={service_type:'Full Service',date:null,time:null,pdate:'',desc:''}; go('home'); };
 }
 
 // ---------- BOOT ----------

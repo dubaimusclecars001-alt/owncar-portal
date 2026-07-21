@@ -4,7 +4,7 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
@@ -143,6 +143,15 @@ app.get("/api/me", requireAuth, async (req, res) => {
       outstanding, nextDueDate: nextDue ? nextDue.due_date : null,
     });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load your account from Zoho Books." }); }
+});
+
+app.get("/api/vehicles", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const plates = await getVehicles(c.contact_id);
+    res.json({ plates });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not load vehicles." }); }
 });
 
 app.get("/api/invoices", requireAuth, async (req, res) => {

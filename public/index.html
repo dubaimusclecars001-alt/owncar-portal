@@ -320,6 +320,7 @@ async function viewHome(){
     <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${pct}%</span></div>
     <div class="track"><div class="fill" style="width:${pct}%"></div></div>
     <div class="prow"><span>AED ${fmt(paidAmt)} PAID</span><span class="mid"></span><span>AED ${fmt(outstanding)} LEFT</span></div>
+    <button class="btn btn-ghost" id="allcars" style="height:42px;margin-top:16px;font-size:13px">Show all cars</button>
   </div>`;
   const overCard = `<div class="card pay">
     <div class="phead"><span class="glabel">Total overdue</span><div class="cardicon">${IC.card}</div></div>
@@ -337,6 +338,7 @@ async function viewHome(){
     <div class="greet-h">${(me.name||'').split(' ')[0]||'Welcome'}.</div>
     <div style="height:18px"></div>${contract}${overCard}${qa}`);
   const si=document.getElementById('seeinv'); if(si) si.onclick=()=>{ PAYTAB='invoices'; go('payments'); };
+  const ac=document.getElementById('allcars'); if(ac) ac.onclick=showCars;
   app.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.act;
     if(a==='service') go('service');
@@ -489,6 +491,18 @@ function viewBooking(){
       showConfirmModal();
     }catch(e){ toast((e&&e.error)||'Could not submit.'); refreshSlots(); }
   };
+}
+async function showCars(){
+  let plates=[]; try{ const r=await api('/api/vehicles'); plates=r.plates||[]; }catch(e){}
+  const list = plates.length
+    ? plates.map(p=>`<div class="row" style="margin-bottom:10px"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${p}</div><div class="r2">Number plate</div></div></div>`).join('')
+    : '<div class="muted center" style="padding:22px 0">No cars found on your account.</div>';
+  const ov=$(`<div class="modal-ov"><div class="modal-card" style="text-align:left;max-width:380px">
+    <div class="glabel">Your cars${plates.length>1?' · '+plates.length:''}</div>
+    <div style="height:14px"></div>${list}
+    <button class="btn btn-primary" id="cclose" style="margin-top:8px">Close</button></div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#cclose').onclick=()=>ov.remove();
 }
 function showConfirmModal(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">

@@ -57,23 +57,50 @@ export async function getCustomerByEmail(email) {
   };
 }
 
-// Best-effort: pull the car's number plate from the customer's invoice
-// (custom field, line-item text, or reference/notes).
+// Best-effort: pull the car number plate(s) from the customer's invoices
+// (custom field, line-item text, or reference/notes). Cached briefly per contact.
+const _vehCache = new Map(); // contactId -> { plates, until }
+
+// One plate for the home card (light: most recent invoice only).
 export async function getVehicle(contactId) {
   if (USE_MOCK) {
     const c = mockCustomers.find((x) => x.contact_id === contactId);
     return c ? c.vehicle : null;
   }
+  const cached = _vehCache.get(contactId);
+  if (cached && Date.now() < cached.until && cached.plates.length) return { plate: cached.plates[0] };
   try {
-    const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 3 });
-    const invs = list.invoices || [];
-    for (const li of invs.slice(0, 3)) {
-      const full = await booksGet(`invoices/${li.invoice_id}`);
-      const plate = extractPlate((full && full.invoice) || {});
-      if (plate) return { plate };
-    }
-    return null;
+    const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 1 });
+    const inv0 = (list.invoices || [])[0];
+    if (!inv0) return null;
+    const full = await booksGet(`invoices/${inv0.invoice_id}`);
+    const p = extractAllPlates((full && full.invoice) || {})[0];
+    return p ? { plate: p } : null;
   } catch (e) { return null; }
+}
+
+// All distinct plates for the "Show all cars" list (heavier scan; cached 15 min).
+export async function getVehicles(contactId) {
+  if (USE_MOCK) {
+    const c = mockCustomers.find((x) => x.contact_id === contactId);
+    return c && c.vehicle && c.vehicle.plate ? [c.vehicle.plate] : [];
+  }
+  const cached = _vehCache.get(contactId);
+  if (cached && Date.now() < cached.until) return cached.plates;
+  const plates = [];
+  try {
+    const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 20 });
+    const invs = (list.invoices || []).slice(0, 12);
+    for (const li of invs) {
+      if (plates.length >= 8) break;
+      const full = await booksGet(`invoices/${li.invoice_id}`);
+      for (const p of extractAllPlates((full && full.invoice) || {})) {
+        if (!plates.includes(p)) plates.push(p);
+      }
+    }
+  } catch (e) { /* ignore */ }
+  _vehCache.set(contactId, { plates, until: Date.now() + 15 * 60 * 1000 });
+  return plates;
 }
 
 function plateFromText(s) {
@@ -87,18 +114,20 @@ function plateFromText(s) {
   if (m && m[1] && /\d/.test(m[1])) return (str.match(/\b(?:dubai|dxb|abu\s*dhabi|auh|sharjah|shj|ajman|ajm|rak|uaq|fujairah|fuj)\b/i)[0] + " " + m[1]).replace(/\s+/g, " ").trim().toUpperCase();
   return null;
 }
-function extractPlate(inv) {
+function extractAllPlates(inv) {
+  const out = [];
+  const push = (p) => { if (p) { const v = String(p).trim(); if (v && !out.includes(v)) out.push(v); } };
   for (const f of (inv.custom_fields || [])) {
-    if (/plate|vehicle|car|reg/i.test(f.label || "") && f.value) return String(f.value).trim();
+    if (/plate|vehicle|car|reg/i.test(f.label || "") && f.value) push(f.value);
   }
   for (const li of (inv.line_items || [])) {
     for (const f of (li.custom_fields || [])) {
-      if (/plate|vehicle|car|reg/i.test(f.label || "") && f.value) return String(f.value).trim();
+      if (/plate|vehicle|car|reg/i.test(f.label || "") && f.value) push(f.value);
     }
-    const p = plateFromText(li.description) || plateFromText(li.name);
-    if (p) return p;
+    push(plateFromText(li.description)); push(plateFromText(li.name));
   }
-  return plateFromText(inv.reference_number) || plateFromText(inv.notes) || plateFromText(inv.customer_notes) || null;
+  push(plateFromText(inv.reference_number)); push(plateFromText(inv.notes)); push(plateFromText(inv.customer_notes));
+  return out;
 }
 
 export async function getInvoices(contactId) {

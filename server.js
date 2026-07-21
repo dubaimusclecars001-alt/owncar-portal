@@ -8,6 +8,7 @@ import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPayment
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
+import { initFleetLive } from "./src/fleetlive.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -361,3 +362,6 @@ app.post("/connect", express.urlencoded({ extended: true }), async (req, res) =>
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`OWN.CAR portal running on http://localhost:${PORT}  (mock=${USE_MOCK})`));
+
+// Start the live Firestore fleet loader (no-op unless FIREBASE_SERVICE_ACCOUNT is set).
+initFleetLive().catch((e) => console.error("[fleetlive] init error:", e && e.message));

@@ -1,7 +1,8 @@
 // Zoho Books data access. Uses sample data when USE_MOCK=true, otherwise
 // talks to the real Zoho Books API with a read-only refresh token.
 import { mockCustomers, mockInvoices, mockPayments } from "./mock.js";
-import { lookupCar, carLabel, colorLabel } from "./fleet.js";
+import { lookupCar, carLabel, colorLabel, normPlate } from "./fleet.js";
+import { liveLookup } from "./fleetlive.js";
 
 const USE_MOCK = (process.env.USE_MOCK || "true").toLowerCase() !== "false";
 const ORG = process.env.ZOHO_ORG_ID;
@@ -67,7 +68,8 @@ const _vehCache = new Map(); // contactId -> { plates, until }
 export function enrichPlate(plate) {
   if (!plate) return null;
   const rec = { plate: String(plate).trim() };
-  const info = lookupCar(plate);
+  // Prefer live Firestore data (if connected); fall back to the bundled snapshot.
+  const info = liveLookup(plate) || lookupCar(plate);
   if (info) {
     if (info.car) rec.car = carLabel(info.car);
     if (/^\d{4}$/.test(info.year || "")) rec.year = info.year;
@@ -112,6 +114,7 @@ export async function getVehicles(contactId) {
   const cached = _vehCache.get(contactId);
   if (cached && Date.now() < cached.until) return cached.plates.map(enrichPlate);
   const plates = [];
+  const seen = new Set(); // de-dupe by normalised plate (ignores case/spacing/order)
   try {
     const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 20 });
     const invs = (list.invoices || []).slice(0, 12);
@@ -119,7 +122,8 @@ export async function getVehicles(contactId) {
       if (plates.length >= 8) break;
       const full = await booksGet(`invoices/${li.invoice_id}`);
       for (const p of extractAllPlates((full && full.invoice) || {})) {
-        if (!plates.includes(p)) plates.push(p);
+        const nk = normPlate(p);
+        if (nk && !seen.has(nk)) { seen.add(nk); plates.push(p); }
       }
     }
   } catch (e) { /* ignore */ }

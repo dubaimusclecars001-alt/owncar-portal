@@ -363,58 +363,69 @@ AA36397|TOYOTA CAMRY|2023|SILVER|4|1/24
 O52570|TOYOTA COROLLA|2021|BLACK|79|19/24
 `;
 
-const FLEET = new Map();        // normalised plate ("M82418") -> record
-const FLEET_BY_NUM = new Map();   // plate number ("82418") -> [records with that number]
+// Build an order-independent plate index + lookup from a list of records.
+// Each record: { car, year, color, percent, months, code, num }.
+// Shared by BOTH the bundled snapshot below and the live Firestore data.
+export function makeIndex(records) {
+  const byKey = new Map();   // "M82418" -> record
+  const byNum = new Map();   // "82418"  -> [records]
+  for (const r of records) {
+    const code = (r.code || "").toUpperCase();
+    const num = String(r.num || "");
+    const key = code + num;
+    if (!key) continue;
+    if (!byKey.has(key)) byKey.set(key, r);
+    if (num) {
+      if (!byNum.has(num)) byNum.set(num, []);
+      byNum.get(num).push(r);
+    }
+  }
+  // ORDER-INDEPENDENT lookup. The inventory writes plates code-first ("M 82418")
+  // while Zoho may write them number-first ("36641 M") with an emirate prefix
+  // ("DXB M 82418"). Match on the plate NUMBER; use the code letters only to
+  // break ties when two cars share a number.
+  return function lookup(plate) {
+    const up = String(plate || "").toUpperCase();
+    const k = up.replace(/[^A-Z0-9]/g, "");
+    if (!k) return null;
+    if (byKey.has(k)) return byKey.get(k);
+    const runs = up.match(/\d+/g) || [];
+    if (!runs.length) return null;
+    const num = runs.sort((a, b) => b.length - a.length)[0];
+    const cands = byNum.get(num);
+    if (!cands || !cands.length) return null;
+    if (cands.length === 1) return cands[0];
+    const letters = up.replace(/[^A-Z]/g, "");
+    return cands.find((r) => r.code && letters.includes(r.code)) || null;
+  };
+}
 
+// Static index built from the bundled snapshot above.
+const STATIC_RECORDS = [];
 for (const line of DATA.trim().split("\n")) {
   const p = line.split("|");
   const key = (p[0] || "").trim();
   if (!key) continue;
   const pctRaw = (p[4] || "").trim();
-  const code = (key.match(/[A-Z]+/g) || []).join("");   // plate-code letters, e.g. "M"
-  const num = (key.match(/\d+/g) || []).join("");         // plate number, e.g. "82418"
-  const rec = {
+  STATIC_RECORDS.push({
     car: (p[1] || "").trim(),
     year: (p[2] || "").trim(),
     color: (p[3] || "").trim(),
     percent: pctRaw === "" ? null : Math.max(0, Math.min(100, parseInt(pctRaw, 10))),
     months: (p[5] || "").trim(),
-    code,
-    num,
-  };
-  FLEET.set(key, rec);
-  if (num) {
-    if (!FLEET_BY_NUM.has(num)) FLEET_BY_NUM.set(num, []);
-    FLEET_BY_NUM.get(num).push(rec);
-  }
+    code: (key.match(/[A-Z]+/g) || []).join(""),
+    num: (key.match(/\d+/g) || []).join(""),
+  });
 }
+const staticLookup = makeIndex(STATIC_RECORDS);
 
 export function normPlate(s) {
   return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-// Look up a car by plate — ORDER-INDEPENDENT. The Muscle Cars inventory writes
-// plates code-first ("M 82418") while Zoho invoices may write them number-first
-// ("36641 M") and can carry an emirate prefix ("DXB M 82418"). So we match on the
-// plate NUMBER, and use the code letters only to break ties when two cars share a
-// number. Falls back to an exact normalised match for safety.
+// Look up a car by plate against the bundled snapshot.
 export function lookupCar(plate) {
-  const up = String(plate || "").toUpperCase();
-  const k = up.replace(/[^A-Z0-9]/g, "");
-  if (!k) return null;
-  if (FLEET.has(k)) return FLEET.get(k);                 // exact same-order match
-
-  const digitRuns = up.match(/\d+/g) || [];
-  if (!digitRuns.length) return null;
-  const num = digitRuns.sort((a, b) => b.length - a.length)[0]; // the plate number (longest digit run)
-  const cands = FLEET_BY_NUM.get(num);
-  if (!cands || !cands.length) return null;
-  if (cands.length === 1) return cands[0];               // unique number -> match regardless of order/prefix
-
-  // Same number shared by more than one car: disambiguate by the code letters.
-  const letters = up.replace(/[^A-Z]/g, "");
-  const exact = cands.find((r) => r.code && letters.includes(r.code));
-  return exact || null;
+  return staticLookup(plate);
 }
 
 // "CHEVROLET CAPTIVA" -> "Chevrolet Captiva"; keeps model codes (with digits or

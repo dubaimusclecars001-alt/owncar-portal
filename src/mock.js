@@ -6,12 +6,15 @@ export const mockCustomers = [
     contact_id: "cust_1",
     contact_name: "Jay Mendonca",
     email: "jay@example.com",
-    vehicle: { name: "Chevrolet Camaro SS", year: "2023", plate: "DXB · 42917", contract_end: "14 Aug 2026" },
+    phone: "+971500000001",
+    vehicle: { plate: "E 61146", contract_end: "14 Aug 2026" },
+    plates: ["E 61146", "AA 96766", "BB 24058"],
   },
   {
     contact_id: "cust_2",
     contact_name: "Sara Ahmed",
     email: "sara@example.com",
+    phone: "+971500000002",
     vehicle: { name: "Ford Mustang GT", year: "2024", plate: "DXB · 10233", contract_end: "02 Sep 2026" },
   },
 ];

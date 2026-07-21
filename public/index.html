@@ -107,6 +107,12 @@
   .row .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--accent);}
   .row .ic svg{width:19px;height:19px;} .row .m{flex:1;min-width:0;} .row .r{text-align:right;}
   .r1{font-size:14px;font-weight:600;} .r2{font-size:11px;color:var(--muted);margin-top:3px;}
+  .carpick{display:flex;align-items:center;gap:13px;padding:13px 14px;border:1px solid var(--line);border-radius:15px;margin-bottom:10px;background:var(--surface);width:100%;text-align:left;color:inherit;cursor:pointer;font:inherit;transition:border-color .15s,background .15s;}
+  .carpick .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--accent);}
+  .carpick .ic svg{width:19px;height:19px;} .carpick .m{flex:1;min-width:0;}
+  .carpick .chev{color:var(--muted);font-size:18px;flex:0 0 auto;}
+  .carpick:active{background:var(--surface2);}
+  .carpick.on{border-color:var(--accent);} .carpick.on .chev{color:var(--accent);font-weight:700;}
   .amt2{font-size:15px;font-weight:700;}
   .pill{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:1px;font-weight:600;padding:3px 8px;border-radius:7px;margin-top:5px;text-transform:uppercase;}
   .pill.paid{background:var(--green-soft);color:#7fe0b4;} .pill.due{background:var(--accent-soft);color:var(--accent-2);} .pill.overdue,.pill.unpaid{background:var(--red-soft);color:#ff8a97;}
@@ -200,6 +206,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 const daysUntil=(s)=>{ if(!s) return null; const d=new Date(s); if(isNaN(d)) return null; return Math.round((d-new Date(new Date().toDateString()))/864e5); };
 
 let ME=null, CFG={mock:true};
+let SELECTED_VEHICLE=null; // when set (from "Show all cars"), the home card shows this car
 let booking={service_type:'Full Service',date:null,time:null};
 const WA='https://wa.me/971589966706';
 
@@ -314,15 +321,22 @@ async function viewHome(){
   const pct= invoiced? Math.round(paidAmt/invoiced*100) : 0;
   const todayIso=new Date(Date.now()+4*3600*1000).toISOString().slice(0,10);
   const overdue=invoices.filter(i=>Number(i.balance)>0 && (String(i.status).toLowerCase()==='overdue' || (i.due_date && i.due_date<todayIso))).reduce((s,i)=>s+Number(i.balance||0),0);
-  const v=me.vehicle||{};
+  const v=SELECTED_VEHICLE||me.vehicle||{};
   const plate=v.plate||'';
   const carName=v.car||v.name||'';
   const carSub=[plate, [v.year,v.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
+  // Ownership progress: use the car's "% done" from inventory when we have it,
+  // otherwise fall back to the money-paid vs total-invoiced calculation.
+  const hasPct=typeof v.percent==='number';
+  const pctMoney= invoiced? Math.round(paidAmt/invoiced*100) : 0;
+  const barPct= hasPct? v.percent : pctMoney;
+  const paidLabel= hasPct ? (v.months? `${v.months} MONTHS PAID` : `${barPct}% OWNED`) : `AED ${fmt(paidAmt)} PAID`;
+  const leftLabel= hasPct ? `${Math.max(0,100-barPct)}% LEFT` : `AED ${fmt(outstanding)} LEFT`;
   const contract=`<div class="card contract">
     <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
-    <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${pct}%</span></div>
-    <div class="track"><div class="fill" style="width:${pct}%"></div></div>
-    <div class="prow"><span>AED ${fmt(paidAmt)} PAID</span><span class="mid"></span><span>AED ${fmt(outstanding)} LEFT</span></div>
+    <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${barPct}%</span></div>
+    <div class="track"><div class="fill" style="width:${barPct}%"></div></div>
+    <div class="prow"><span>${paidLabel}</span><span class="mid"></span><span>${leftLabel}</span></div>
     <button class="btn btn-ghost" id="allcars" style="height:42px;margin-top:16px;font-size:13px">Show all cars</button>
   </div>`;
   const overCard = `<div class="card pay">
@@ -497,19 +511,27 @@ function viewBooking(){
 }
 async function showCars(){
   let cars=[]; try{ const r=await api('/api/vehicles'); cars=r.vehicles||(r.plates||[]).map(p=>({plate:p})); }catch(e){}
+  const activePlate=(SELECTED_VEHICLE&&SELECTED_VEHICLE.plate)||(ME&&ME.vehicle&&ME.vehicle.plate)||'';
   const list = cars.length
-    ? cars.map(c=>{
+    ? cars.map((c,i)=>{
         const title=c.car||c.plate||'Vehicle';
-        const sub=c.car?[c.plate,[c.year,c.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · '):'Number plate';
-        return `<div class="row" style="margin-bottom:10px"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${title}</div><div class="r2">${sub}</div></div></div>`;
+        const bits=[c.plate,[c.year,c.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
+        const sub=c.car?(bits + (typeof c.percent==='number'?` · ${c.percent}% owned`:'')):'Number plate';
+        const on=c.plate&&c.plate===activePlate;
+        return `<button class="carpick${on?' on':''}" data-i="${i}"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${title}</div><div class="r2">${sub}</div></div><div class="chev">${on?'✓':'›'}</div></button>`;
       }).join('')
     : '<div class="muted center" style="padding:22px 0">No cars found on your account.</div>';
   const ov=$(`<div class="modal-ov"><div class="modal-card" style="text-align:left;max-width:380px">
     <div class="glabel">Your cars${cars.length>1?' · '+cars.length:''}</div>
+    ${cars.length>1?'<div class="muted" style="font-size:12px;margin-top:4px">Tap a car to view it on your home screen.</div>':''}
     <div style="height:14px"></div>${list}
     <button class="btn btn-primary" id="cclose" style="margin-top:8px">Close</button></div></div>`);
   document.body.appendChild(ov);
   ov.querySelector('#cclose').onclick=()=>ov.remove();
+  ov.querySelectorAll('.carpick').forEach(b=>b.onclick=()=>{
+    const c=cars[Number(b.dataset.i)]; if(!c) return;
+    SELECTED_VEHICLE=c; ov.remove(); go('home');
+  });
 }
 function showConfirmModal(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">

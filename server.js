@@ -136,8 +136,9 @@ app.get("/api/me", requireAuth, async (req, res) => {
     const invoices = await getInvoices(c.contact_id);
     const outstanding = invoices.reduce((s, i) => s + money(i.balance), 0);
     const nextDue = invoices.filter(i => money(i.balance) > 0).sort((a,b)=> (a.due_date||"").localeCompare(b.due_date||""))[0];
-    let vehicle = c.vehicle;
-    if (!vehicle) { try { vehicle = await getVehicle(c.contact_id); } catch (e) {} }
+    let vehicle = null;
+    try { vehicle = await getVehicle(c.contact_id); } catch (e) {}
+    if (!vehicle) vehicle = c.vehicle || null;
     res.json({
       name: c.contact_name, email: c.email, vehicle, phone: c.phone || null,
       outstanding, nextDueDate: nextDue ? nextDue.due_date : null,

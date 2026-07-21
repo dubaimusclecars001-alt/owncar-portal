@@ -73,6 +73,8 @@ export function enrichPlate(plate) {
     if (/^\d{4}$/.test(info.year || "")) rec.year = info.year;
     const col = colorLabel(info.color);
     if (col) rec.color = col;
+    if (typeof info.percent === "number") rec.percent = info.percent;
+    if (info.months && !/^0\/[-–]?$/.test(info.months)) rec.months = info.months;
   }
   return rec;
 }
@@ -81,9 +83,11 @@ export function enrichPlate(plate) {
 export async function getVehicle(contactId) {
   if (USE_MOCK) {
     const c = mockCustomers.find((x) => x.contact_id === contactId);
-    if (!c || !c.vehicle) return null;
-    const v = enrichPlate(c.vehicle.plate) || {};
-    return { plate: c.vehicle.plate, car: v.car || c.vehicle.name, year: v.year || c.vehicle.year, color: v.color };
+    if (!c) return null;
+    const firstPlate = (c.plates && c.plates[0]) || (c.vehicle && c.vehicle.plate);
+    if (!firstPlate) return null;
+    const v = enrichPlate(firstPlate) || {};
+    return { plate: firstPlate, car: v.car || (c.vehicle && c.vehicle.name), year: v.year || (c.vehicle && c.vehicle.year), color: v.color, percent: v.percent, months: v.months };
   }
   const cached = _vehCache.get(contactId);
   if (cached && Date.now() < cached.until && cached.plates.length) return enrichPlate(cached.plates[0]);
@@ -101,7 +105,9 @@ export async function getVehicle(contactId) {
 export async function getVehicles(contactId) {
   if (USE_MOCK) {
     const c = mockCustomers.find((x) => x.contact_id === contactId);
-    return c && c.vehicle && c.vehicle.plate ? [ (await getVehicle(contactId)) ] : [];
+    if (!c) return [];
+    const list = (c.plates && c.plates.length) ? c.plates : (c.vehicle && c.vehicle.plate ? [c.vehicle.plate] : []);
+    return list.map(enrichPlate);
   }
   const cached = _vehCache.get(contactId);
   if (cached && Date.now() < cached.until) return cached.plates.map(enrichPlate);

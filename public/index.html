@@ -325,13 +325,11 @@ async function viewHome(){
   const plate=v.plate||'';
   const carName=v.car||v.name||'';
   const carSub=[plate, [v.year,v.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
-  // Ownership progress: use the car's "% done" from inventory when we have it,
-  // otherwise fall back to the money-paid vs total-invoiced calculation.
-  const hasPct=typeof v.percent==='number';
-  const pctMoney= invoiced? Math.round(paidAmt/invoiced*100) : 0;
-  const barPct= hasPct? v.percent : pctMoney;
-  const paidLabel= hasPct ? (v.months? `${v.months} MONTHS PAID` : `${barPct}% OWNED`) : `AED ${fmt(paidAmt)} PAID`;
-  const leftLabel= hasPct ? `${Math.max(0,100-barPct)}% LEFT` : `AED ${fmt(outstanding)} LEFT`;
+  // Ownership progress comes from the inventory "% done" for this plate.
+  // If the plate isn't found in the inventory, show 0%.
+  const barPct= typeof v.percent==='number' ? v.percent : 0;
+  const paidLabel= v.months ? `${v.months} MONTHS PAID` : `${barPct}% OWNED`;
+  const leftLabel= `${Math.max(0,100-barPct)}% LEFT`;
   const contract=`<div class="card contract">
     <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
     <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${barPct}%</span></div>
@@ -516,7 +514,7 @@ async function showCars(){
     ? cars.map((c,i)=>{
         const title=c.car||c.plate||'Vehicle';
         const bits=[c.plate,[c.year,c.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
-        const sub=c.car?(bits + (typeof c.percent==='number'?` · ${c.percent}% owned`:'')):'Number plate';
+        const sub=c.car?(bits + ` · ${typeof c.percent==='number'?c.percent:0}% owned`):'Number plate';
         const on=c.plate&&c.plate===activePlate;
         return `<button class="carpick${on?' on':''}" data-i="${i}"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${title}</div><div class="r2">${sub}</div></div><div class="chev">${on?'✓':'›'}</div></button>`;
       }).join('')

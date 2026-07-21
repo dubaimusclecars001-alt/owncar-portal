@@ -363,26 +363,29 @@ AA36397|TOYOTA CAMRY|2023|SILVER|4|1/24
 O52570|TOYOTA COROLLA|2021|BLACK|79|19/24
 `;
 
-const FLEET = new Map();       // normalised plate -> { car, year, color, percent, months }
-const FLEET_BY_NUM = new Map();  // digits-only -> record, or null if ambiguous
+const FLEET = new Map();        // normalised plate ("M82418") -> record
+const FLEET_BY_NUM = new Map();   // plate number ("82418") -> [records with that number]
 
 for (const line of DATA.trim().split("\n")) {
   const p = line.split("|");
   const key = (p[0] || "").trim();
   if (!key) continue;
   const pctRaw = (p[4] || "").trim();
+  const code = (key.match(/[A-Z]+/g) || []).join("");   // plate-code letters, e.g. "M"
+  const num = (key.match(/\d+/g) || []).join("");         // plate number, e.g. "82418"
   const rec = {
     car: (p[1] || "").trim(),
     year: (p[2] || "").trim(),
     color: (p[3] || "").trim(),
     percent: pctRaw === "" ? null : Math.max(0, Math.min(100, parseInt(pctRaw, 10))),
     months: (p[5] || "").trim(),
+    code,
+    num,
   };
   FLEET.set(key, rec);
-  const num = key.replace(/^[A-Z]+/, "");
   if (num) {
-    if (FLEET_BY_NUM.has(num)) FLEET_BY_NUM.set(num, null);
-    else FLEET_BY_NUM.set(num, rec);
+    if (!FLEET_BY_NUM.has(num)) FLEET_BY_NUM.set(num, []);
+    FLEET_BY_NUM.get(num).push(rec);
   }
 }
 
@@ -390,15 +393,28 @@ export function normPlate(s) {
   return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-// Look up a car by plate. Exact normalised match first, then plate-number-only
-// fallback (used only when that number is unique across the fleet).
+// Look up a car by plate — ORDER-INDEPENDENT. The Muscle Cars inventory writes
+// plates code-first ("M 82418") while Zoho invoices may write them number-first
+// ("36641 M") and can carry an emirate prefix ("DXB M 82418"). So we match on the
+// plate NUMBER, and use the code letters only to break ties when two cars share a
+// number. Falls back to an exact normalised match for safety.
 export function lookupCar(plate) {
-  const k = normPlate(plate);
+  const up = String(plate || "").toUpperCase();
+  const k = up.replace(/[^A-Z0-9]/g, "");
   if (!k) return null;
-  if (FLEET.has(k)) return FLEET.get(k);
-  const num = k.replace(/^[A-Z]+/, "");
-  if (num && FLEET_BY_NUM.get(num)) return FLEET_BY_NUM.get(num);
-  return null;
+  if (FLEET.has(k)) return FLEET.get(k);                 // exact same-order match
+
+  const digitRuns = up.match(/\d+/g) || [];
+  if (!digitRuns.length) return null;
+  const num = digitRuns.sort((a, b) => b.length - a.length)[0]; // the plate number (longest digit run)
+  const cands = FLEET_BY_NUM.get(num);
+  if (!cands || !cands.length) return null;
+  if (cands.length === 1) return cands[0];               // unique number -> match regardless of order/prefix
+
+  // Same number shared by more than one car: disambiguate by the code letters.
+  const letters = up.replace(/[^A-Z]/g, "");
+  const exact = cands.find((r) => r.code && letters.includes(r.code));
+  return exact || null;
 }
 
 // "CHEVROLET CAPTIVA" -> "Chevrolet Captiva"; keeps model codes (with digits or

@@ -53,9 +53,52 @@ export async function getCustomerByEmail(email) {
     contact_name: c.contact_name,
     email: c.email,
     phone: c.mobile || c.phone || null,
-    // Vehicle details can be stored as a custom field in Books; adjust the key as needed.
     vehicle: null,
   };
+}
+
+// Best-effort: pull the car's number plate from the customer's invoice
+// (custom field, line-item text, or reference/notes).
+export async function getVehicle(contactId) {
+  if (USE_MOCK) {
+    const c = mockCustomers.find((x) => x.contact_id === contactId);
+    return c ? c.vehicle : null;
+  }
+  try {
+    const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 3 });
+    const invs = list.invoices || [];
+    for (const li of invs.slice(0, 3)) {
+      const full = await booksGet(`invoices/${li.invoice_id}`);
+      const plate = extractPlate((full && full.invoice) || {});
+      if (plate) return { plate };
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
+function plateFromText(s) {
+  if (!s) return null;
+  const str = String(s);
+  // "Plate/Vehicle/Reg no: XXXX"
+  let m = str.match(/(?:plate|vehicle|reg(?:istration)?|car)\s*(?:no\.?|number|#)?[\s:#\-]*([A-Za-z]{0,4}[\s-]?\d{1,5}[\s-]?[A-Za-z]{0,3})/i);
+  if (m && m[1] && /\d/.test(m[1])) return m[1].replace(/\s+/g, " ").trim().toUpperCase();
+  // emirate name/code followed by the plate
+  m = str.match(/\b(?:dubai|dxb|abu\s*dhabi|auh|sharjah|shj|ajman|ajm|rak|ras\s*al\s*khaimah|uaq|umm\s*al\s*quwain|fujairah|fuj)\b[\s:\-]*([A-Za-z]{0,3}\s?\d{1,5})/i);
+  if (m && m[1] && /\d/.test(m[1])) return (str.match(/\b(?:dubai|dxb|abu\s*dhabi|auh|sharjah|shj|ajman|ajm|rak|uaq|fujairah|fuj)\b/i)[0] + " " + m[1]).replace(/\s+/g, " ").trim().toUpperCase();
+  return null;
+}
+function extractPlate(inv) {
+  for (const f of (inv.custom_fields || [])) {
+    if (/plate|vehicle|car|reg/i.test(f.label || "") && f.value) return String(f.value).trim();
+  }
+  for (const li of (inv.line_items || [])) {
+    for (const f of (li.custom_fields || [])) {
+      if (/plate|vehicle|car|reg/i.test(f.label || "") && f.value) return String(f.value).trim();
+    }
+    const p = plateFromText(li.description) || plateFromText(li.name);
+    if (p) return p;
+  }
+  return plateFromText(inv.reference_number) || plateFromText(inv.notes) || plateFromText(inv.customer_notes) || null;
 }
 
 export async function getInvoices(contactId) {

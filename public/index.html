@@ -5,148 +5,177 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>OWN.CAR — Client Portal</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&display=swap');
   :root{
-    --bg:#0B0B0C;--surface:#131315;--surface2:#1A1A1F;--surface3:#232329;
-    --line:rgba(255,255,255,0.06);--line2:rgba(255,255,255,0.12);
-    --text:#F4F4F2;--muted:#A1A1A6;--muted2:#6D6D72;
-    --accent:#D4AF37;--accent-2:#E7C65A;--accent-soft:rgba(212,175,55,0.14);
-    --green:#43B581;--green-soft:rgba(67,181,129,0.14);--amber:#E0A44A;--amber-soft:rgba(224,164,74,0.14);--red-soft:rgba(225,73,73,0.15);
+    --bg:#050505;--bg2:#0B0B0C;--surface:#161618;--surface2:#1F1F23;--surface3:#2A2A30;
+    --line:rgba(255,255,255,0.07);--line2:rgba(255,255,255,0.13);
+    --text:#F4F4F2;--muted:#8B8B87;--muted2:#5F5F66;
+    --accent:#D4AF37;--accent-2:#E7C65A;--accent-soft:rgba(212,175,55,0.13);
+    --green:#43B581;--green-soft:rgba(67,181,129,0.16);--red-soft:rgba(225,73,73,0.15);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;font-family:'Hanken Grotesk',system-ui,sans-serif;}
-  .h1,.login h1,.apphead .ttl,.mono,.login-logo,.balance .amt,.scell .sv,.vname,.sec-h .t,.amt2,.r1,.dcell .dn{font-family:'Archivo',system-ui,sans-serif;}
-  .h1,.login h1,.balance .amt,.scell .sv{font-weight:800;letter-spacing:-.5px;}
-  body{background:#050506;color:var(--text);min-height:100vh;display:flex;justify-content:center;}
+  .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,monospace;}
+  body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;}
   #app{width:100%;max-width:460px;min-height:100vh;background:
-      radial-gradient(600px 300px at 100% 0%,rgba(212,175,55,0.10),rgba(0,0,0,0) 60%),var(--bg);
-    position:relative;display:flex;flex-direction:column;padding-bottom:86px;}
-  .hidden{display:none !important;}
-  .muted{color:var(--muted);} .center{text-align:center;}
-  button{cursor:pointer;font-family:inherit;}
-  .btn{width:100%;height:52px;border:none;border-radius:15px;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;}
-  .btn-primary{background:var(--accent);color:#0B0B0C;font-weight:700;box-shadow:0 10px 24px -8px rgba(212,175,55,.5);}
-  .btn-ghost{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--line2);}
-  input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;padding:0 16px;outline:none;}
+      radial-gradient(620px 320px at 100% -4%,rgba(212,175,55,0.10),rgba(0,0,0,0) 60%),var(--bg2);
+    position:relative;display:flex;flex-direction:column;padding-bottom:92px;}
+  .center{text-align:center;} .muted{color:var(--muted);}
+  button{cursor:pointer;font-family:inherit;color:inherit;}
+  a{color:var(--accent);text-decoration:none;}
+  svg{display:block;}
+
+  .glabel{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);}
+  .glabel.mut{color:var(--muted2);}
+  .disp{font-weight:800;letter-spacing:-.6px;}
+
+  .btn{width:100%;height:52px;border:none;border-radius:14px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary{background:var(--accent);color:#0B0B0C;font-weight:700;box-shadow:0 12px 26px -10px rgba(212,175,55,.55);}
+  .btn-ghost{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--line2);font-weight:500;}
+  input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:13px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
   input:focus,select:focus{border-color:var(--accent);}
-  .drange{display:flex;gap:10px;margin:2px 0 4px;} .dfield{flex:1;min-width:0;}
   input[type=date]{color-scheme:dark;padding:0 12px;} input[type=date]::-webkit-calendar-picker-indicator{filter:invert(76%) sepia(38%) saturate(560%) hue-rotate(1deg);cursor:pointer;}
-  textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;padding:12px 16px;outline:none;resize:vertical;font-family:inherit;}
+  textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:13px;color:var(--text);font-size:15px;padding:12px 15px;outline:none;resize:vertical;font-family:inherit;}
   textarea:focus{border-color:var(--accent);}
-  .modal-ov{position:fixed;inset:0;background:rgba(5,5,7,.72);display:flex;align-items:center;justify-content:center;z-index:300;padding:26px;}
-  .modal-card{background:var(--surface);border:1px solid var(--line2);border-radius:22px;padding:28px 24px;max-width:360px;width:100%;text-align:center;}
-  label{font-size:12px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;}
+  label{font-size:11px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase;}
 
-  /* header */
-  .apphead{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;}
-  .apphead .left{display:flex;align-items:center;gap:11px;}
-  .mono{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,#241c20,#0e0e10 80%);font-size:11px;font-weight:700;}
-  .mono b{color:var(--accent);}
-  .apphead .ttl{font-size:15px;font-weight:600;}
-  .apphead .ttl small{display:block;font-size:9px;color:var(--muted2);letter-spacing:2px;margin-top:1px;}
-  .iconbtn{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);}
-  .backbtn{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;}
+  /* top bar (home) + sub header */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 6px;}
+  .tb-right{display:flex;align-items:center;gap:12px;}
+  .iconbtn{width:42px;height:42px;border-radius:13px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);position:relative;}
+  .iconbtn svg{width:19px;height:19px;}
+  .iconbtn .dot{position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .avatar{width:42px;height:42px;border-radius:13px;background:var(--accent);color:#0B0B0C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;border:none;}
+  .subhead{display:flex;align-items:center;gap:12px;padding:18px 20px 8px;}
+  .backbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;}
+  .htitle{font-size:19px;font-weight:700;letter-spacing:-.3px;}
 
-  .body{flex:1;padding:6px 20px 20px;}
-  .h1{font-size:24px;font-weight:600;letter-spacing:-.3px;}
-  .sub{font-size:14px;color:var(--muted);font-weight:300;}
-  .sec-h{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 13px;}
-  .sec-h .t{font-size:15px;font-weight:600;}
+  .body{flex:1;padding:8px 20px 22px;}
+  .greet-h{font-size:34px;font-weight:800;letter-spacing:-1px;margin-top:2px;}
+  .sec-h{display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px;}
 
-  /* balance */
-  .balance{border-radius:24px;padding:22px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.09);
-    background:radial-gradient(400px 180px at 110% -20%,rgba(212,175,55,0.22),rgba(212,175,55,0) 60%),linear-gradient(160deg,#1c1a12,#121216);margin-top:8px;}
-  .balance .lbl{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
-  .balance .amt{font-size:34px;font-weight:600;letter-spacing:-1px;margin-top:6px;}
-  .balance .amt .cur{font-size:15px;color:var(--muted);vertical-align:6px;margin-right:6px;}
-  .due{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:#e7c9a0;background:rgba(199,166,103,0.12);border:1px solid rgba(199,166,103,0.25);padding:5px 11px;border-radius:20px;}
-  .due .d{width:6px;height:6px;border-radius:50%;background:var(--amber);}
-  .brow{display:flex;gap:11px;margin-top:18px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;position:relative;overflow:hidden;}
+  .card + .card{margin-top:16px;}
 
+  /* contract card */
+  .contract{background:radial-gradient(420px 200px at 115% -30%,rgba(212,175,55,0.14),rgba(212,175,55,0) 62%),var(--surface);}
+  .crow{display:flex;gap:15px;align-items:center;margin-bottom:20px;}
+  .cimg{width:74px;height:74px;border-radius:15px;flex:0 0 auto;border:1px solid var(--line2);
+     background:repeating-linear-gradient(135deg,#25252b,#25252b 7px,#1c1c21 7px,#1c1c21 14px);}
+  .cname{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:5px;}
+  .csub{font-size:13px;color:var(--muted);margin-top:1px;}
+  .prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+  .pct{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent);font-weight:600;}
+  .track{height:7px;border-radius:6px;background:var(--surface3);overflow:hidden;}
+  .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+  .prow{display:flex;justify-content:space-between;margin-top:12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:var(--muted2);}
+  .prow .mid{color:var(--muted);}
+
+  /* next payment card */
+  .pay{border-color:rgba(212,175,55,0.28);background:radial-gradient(380px 200px at 110% -30%,rgba(212,175,55,0.16),rgba(212,175,55,0) 60%),linear-gradient(160deg,#1a1712,#141416);}
+  .phead{display:flex;justify-content:space-between;align-items:flex-start;}
+  .cardicon{width:46px;height:46px;border-radius:13px;background:var(--accent);color:#0B0B0C;display:flex;align-items:center;justify-content:center;}
+  .cardicon svg{width:22px;height:22px;}
+  .pamt{font-size:40px;font-weight:800;letter-spacing:-1.5px;margin-top:14px;}
+  .pamt .cur{font-size:15px;color:var(--muted);font-weight:600;letter-spacing:0;margin-right:7px;vertical-align:7px;}
+  .pdue{font-size:14px;color:var(--muted);margin:8px 0 18px;} .pdue b{color:var(--text);font-weight:600;}
+
+  /* quick actions */
   .qa{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px;}
-  .qi{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:none;color:var(--muted);}
-  .qi .ic{width:100%;height:60px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;}
-  .qi .qt{font-size:11px;}
+  .qi{display:flex;flex-direction:column;align-items:center;gap:9px;background:none;border:none;}
+  .qi .ic{width:100%;aspect-ratio:1;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--accent);}
+  .qi .ic svg{width:22px;height:22px;}
+  .qi .qt{font-size:11.5px;color:var(--muted);}
+  .qi:active .ic{border-color:var(--accent);}
 
-  .vehicle{border-radius:20px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(160deg,#17171c,#101013);margin-top:4px;}
-  .vehicle .vimg{height:92px;background:radial-gradient(300px 130px at 70% 120%,#33333c,#0e0e11 70%);position:relative;}
-  .vtag{position:absolute;top:12px;left:14px;font-size:10px;letter-spacing:1px;color:#bfefd6;background:var(--green-soft);border:1px solid rgba(67,181,129,0.3);padding:4px 10px;border-radius:20px;}
-  .vmeta{padding:13px 16px;display:flex;justify-content:space-between;align-items:flex-end;}
-  .vname{font-size:16px;font-weight:600;} .vsub{font-size:11px;color:var(--muted);margin-top:2px;}
-  .vplate{font-size:12px;font-weight:600;color:#e8d9c0;border:1px solid var(--line2);border-radius:8px;padding:5px 10px;}
+  /* timeline */
+  .tl-row{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
+  .tl-row.due{border-color:rgba(212,175,55,0.5);background:linear-gradient(160deg,#1b1811,#151517);}
+  .tl-ic{width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:14px;}
+  .tl-ic.paid{background:var(--green);color:#06231a;} .tl-ic.paid svg{width:22px;height:22px;stroke:#06231a;}
+  .tl-ic.due{background:var(--accent);color:#0B0B0C;} .tl-ic.due svg{width:22px;height:22px;stroke:#0B0B0C;}
+  .tl-ic.sched{background:var(--surface3);color:var(--muted);border:1px solid var(--line);}
+  .tl-m{flex:1;} .tl-t{font-size:15px;font-weight:700;letter-spacing:-.2px;}
+  .tl-s{margin-top:3px;}
+  .tl-amt{font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;}
+  .tl-row.due .tl-amt{color:var(--text);}
 
-  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin:6px 0 16px;}
-  .seg button{flex:1;background:none;border:none;color:var(--muted);font-size:13px;padding:9px 0;border-radius:10px;}
-  .seg button.on{background:var(--surface3);color:var(--text);font-weight:500;}
-
-  .row{display:flex;align-items:center;gap:14px;padding:15px 16px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
-  .row .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-  .row .m{flex:1;} .row .r{text-align:right;}
+  /* generic rows (invoices / receipts) */
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:4px;margin:2px 0 18px;}
+  .seg button{flex:1;background:none;border:none;color:var(--muted);font-size:13px;padding:9px 0;border-radius:9px;font-weight:500;}
+  .seg button.on{background:var(--surface3);color:var(--text);}
+  .row{display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--line);border-radius:15px;margin-bottom:11px;background:var(--surface);}
+  .row .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--accent);}
+  .row .ic svg{width:19px;height:19px;} .row .m{flex:1;min-width:0;} .row .r{text-align:right;}
   .r1{font-size:14px;font-weight:600;} .r2{font-size:11px;color:var(--muted);margin-top:3px;}
-  .amt2{font-size:15px;font-weight:600;}
-  .pill{display:inline-block;font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;margin-top:5px;}
-  .pill.paid{background:var(--green-soft);color:#7fe0b4;} .pill.due{background:var(--amber-soft);color:#f0c88a;} .pill.overdue,.pill.unpaid{background:var(--red-soft);color:#ff8a97;}
-  .row.tap{cursor:pointer;transition:border-color .15s,background .15s;} .row.tap:active{border-color:var(--accent);background:var(--surface2);}
-  .dl{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;color:var(--accent);font-weight:600;letter-spacing:.5px;margin-left:7px;border:1px solid rgba(212,175,55,0.4);padding:2px 7px;border-radius:8px;vertical-align:middle;white-space:nowrap;}
+  .amt2{font-size:15px;font-weight:700;}
+  .pill{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:1px;font-weight:600;padding:3px 8px;border-radius:7px;margin-top:5px;text-transform:uppercase;}
+  .pill.paid{background:var(--green-soft);color:#7fe0b4;} .pill.due{background:var(--accent-soft);color:var(--accent-2);} .pill.overdue,.pill.unpaid{background:var(--red-soft);color:#ff8a97;}
+  .row.tap{cursor:pointer;transition:.15s;} .row.tap:active{border-color:var(--accent);background:var(--surface2);}
+  .dl{display:inline-flex;align-items:center;gap:3px;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--accent);font-weight:600;letter-spacing:.5px;margin-left:7px;border:1px solid rgba(212,175,55,0.4);padding:2px 6px;border-radius:7px;vertical-align:middle;white-space:nowrap;}
 
-  .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 18px;}
-  .scell{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;}
-  .scell.hi{grid-column:span 2;background:linear-gradient(160deg,#1c1a12,#141116);border-color:rgba(212,175,55,0.3);}
-  .scell .sl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
-  .scell .sv{font-size:20px;font-weight:600;margin-top:6px;} .scell.hi .sv{font-size:26px;}
-  .led{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line);}
-  .ldot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
-  .ldot.deb{background:var(--accent);} .ldot.cre{background:var(--green);}
-  .led .lamt{font-size:13.5px;font-weight:600;} .led .lamt.cre{color:var(--green);}
+  .summary{border-radius:18px;padding:18px;margin-bottom:16px;background:radial-gradient(320px 150px at 110% -30%,rgba(212,175,55,0.16),rgba(212,175,55,0) 60%),linear-gradient(160deg,#1a1712,#141416);border:1px solid rgba(212,175,55,0.28);}
+  .summary .sv{font-size:28px;font-weight:800;letter-spacing:-1px;margin-top:6px;}
+  .drange{display:flex;gap:10px;margin:2px 0 6px;} .dfield{flex:1;min-width:0;}
 
-  .rcpt-check{width:74px;height:74px;border-radius:50%;background:var(--green-soft);border:1px solid rgba(67,181,129,0.35);display:flex;align-items:center;justify-content:center;margin:22px auto 16px;}
-  .rcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 18px;margin-top:20px;}
-  .rrow{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px dashed var(--line2);}
-  .rrow:last-child{border-bottom:none;} .rrow .rk{font-size:12.5px;color:var(--muted);} .rrow .rv{font-size:13.5px;font-weight:500;}
-
-  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
-  .chip{font-size:12.5px;padding:10px 15px;border-radius:13px;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
-  .chip.on{background:var(--accent-soft);border-color:rgba(212,175,55,0.4);color:#e8cf7f;font-weight:500;}
-  .dates,.times{display:flex;gap:10px;margin-bottom:20px;}
-  .dcell,.tcell{flex:1;border:1px solid var(--line);border-radius:13px;padding:11px 0;text-align:center;background:var(--surface);color:var(--muted);font-size:13px;}
-  .dcell.on{background:var(--accent);border-color:var(--accent);color:#0B0B0C;}
+  /* booking */
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px;}
+  .chip{font-size:12.5px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
+  .chip.on{background:var(--accent-soft);border-color:rgba(212,175,55,0.4);color:#e8cf7f;font-weight:600;}
+  .times{display:flex;gap:10px;margin-bottom:8px;}
+  .tcell{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px 0;text-align:center;background:var(--surface);color:var(--muted);font-size:13px;}
   .tcell.on{background:var(--accent-soft);border-color:var(--accent);color:#e8cf7f;}
   .tcell.disabled{opacity:.3;text-decoration:line-through;pointer-events:none;}
-  .dcell.disabled{opacity:.32;pointer-events:none;}
-  .dcell .full{font-size:8px;letter-spacing:.5px;color:#ff8a97;margin-top:1px;text-transform:uppercase;}
-  .dcell .dn{font-size:18px;font-weight:700;color:var(--text);} .dcell.on .dn{color:#0B0B0C;}
 
-  /* bottom nav */
-  .nav{position:fixed;bottom:0;width:100%;max-width:460px;height:78px;background:rgba(11,11,13,0.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:12px;}
-  .nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted2);font-size:10px;}
-  .nav button.on{color:var(--text);} .nav button.on .nl{color:var(--accent);}
+  /* bottom nav (app taskbar) */
+  .nav{position:fixed;bottom:0;width:100%;max-width:460px;background:rgba(9,9,10,0.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:10px 8px calc(12px + env(safe-area-inset-bottom,0px));}
+  .nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted2);font-size:9.5px;font-family:ui-monospace,Menlo,monospace;letter-spacing:.6px;text-transform:uppercase;flex:1;}
+  .nav .navic{width:52px;height:32px;border-radius:11px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+  .nav .navic svg{width:21px;height:21px;}
+  .nav button.on{color:var(--accent);}
+  .nav button.on .navic{background:var(--accent-soft);}
 
-  .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);background:rgba(67,181,129,.16);border:1px solid rgba(67,181,129,.45);color:#bff0d6;border-radius:14px;padding:12px 18px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;}
+  .toast{position:fixed;bottom:98px;left:50%;transform:translateX(-50%);background:rgba(67,181,129,.16);border:1px solid rgba(67,181,129,.45);color:#bff0d6;border-radius:13px;padding:12px 18px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:250;max-width:88%;text-align:center;}
   .toast.show{opacity:1;}
-  .loading{text-align:center;color:var(--muted);padding:40px 0;font-size:14px;}
+  .loading{text-align:center;color:var(--muted);padding:44px 0;font-size:14px;}
+  .modal-ov{position:fixed;inset:0;background:rgba(5,5,7,.72);display:flex;align-items:center;justify-content:center;z-index:300;padding:26px;}
+  .modal-card{background:var(--surface);border:1px solid var(--line2);border-radius:22px;padding:28px 24px;max-width:360px;width:100%;text-align:center;}
+  .rcheck{width:72px;height:72px;border-radius:50%;background:var(--green-soft);border:1px solid rgba(67,181,129,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--green);}
+  .rcheck svg{width:34px;height:34px;}
 
   /* login */
   .login-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:30px 26px 60px;}
-  .login-logo{width:76px;height:76px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;background:radial-gradient(circle at 50% 35%,#2a2024,#101012 80%);box-shadow:0 0 0 6px rgba(212,175,55,0.06);font-size:15px;font-weight:700;letter-spacing:1px;}
-  .login-logo b{color:var(--accent);}
-  .login h1{font-size:26px;font-weight:600;text-align:center;}
-  .login p{font-size:14px;color:var(--muted);text-align:center;margin:8px 0 26px;font-weight:300;}
-  .field{margin-bottom:16px;}
+  .login-logo{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;background:var(--accent);color:#0B0B0C;font-size:15px;font-weight:800;letter-spacing:1px;}
+  .login h1{font-size:27px;font-weight:800;text-align:center;letter-spacing:-.5px;}
+  .login p{font-size:14px;color:var(--muted);text-align:center;margin:8px 0 26px;}
+  .field{margin-bottom:15px;}
   .err{color:#ff8a97;font-size:13px;margin:4px 2px 0;min-height:16px;}
-  .devnote{font-size:12px;color:#e0c98a;background:rgba(224,164,74,0.1);border:1px solid rgba(224,164,74,0.25);border-radius:12px;padding:12px;margin-top:14px;text-align:center;}
+  .devnote{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#e0c98a;background:rgba(224,164,74,0.1);border:1px solid rgba(224,164,74,0.25);border-radius:12px;padding:12px;margin-top:14px;text-align:center;}
 </style>
 </head>
 <body>
 <div id="app"><div class="loading">Loading…</div></div>
 <div class="toast" id="toast"></div>
-
 <script>
 const $ = (h) => { const t=document.createElement('template'); t.innerHTML=h.trim(); return t.content.firstChild; };
 const app = document.getElementById('app');
 const fmt = (n) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 const dmy = (s) => { if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+const IC={
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>',
+  card:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18"/></svg>',
+  wrench:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M15 6.5a4 4 0 0 0-5.2 5.2L4 17.6 6.4 20l5.9-5.8A4 4 0 0 0 17.5 9l-2.2 2.2-2.3-.6-.6-2.3z"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 3h7l5 5v13H6z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 16.5h6"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v11H8.5L4 19.5z"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4 10-10"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 11l8-6 8 6v9H4z"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>'
+};
 function ensureGload(){
   if(!window._glInit){ window._glInit=1; window._glN=0;
-    var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,7,.55);display:none;align-items:center;justify-content:center;z-index:200}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
+    var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,5,.55);display:none;align-items:center;justify-content:center;z-index:400}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.22);border-top-color:#D4AF37;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
     var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
   }
   return document.getElementById('gload');
@@ -156,38 +185,36 @@ async function api(path, opts){
   try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
   finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
 }
-// Downloads a file (PDF) from an authenticated endpoint, with the same loading spinner.
 async function downloadFile(url, filename){
   var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
   try{
     const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
     if(!r.ok){ let m='Could not download file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
-    const blob=await r.blob();
-    const a=document.createElement('a'); const u=URL.createObjectURL(blob);
+    const blob=await r.blob(); const a=document.createElement('a'); const u=URL.createObjectURL(blob);
     a.href=u; a.download=filename||'document.pdf'; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(u),5000);
-    toast('Downloaded '+(filename||'file'));
+    setTimeout(()=>URL.revokeObjectURL(u),5000); toast('Downloaded '+(filename||'file'));
   }catch(e){ toast('Could not download file.'); }
   finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
 }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+const daysUntil=(s)=>{ if(!s) return null; const d=new Date(s); if(isNaN(d)) return null; return Math.round((d-new Date(new Date().toDateString()))/864e5); };
 
 let ME=null, CFG={mock:true};
 let booking={service_type:'Full Service',date:null,time:null};
+const WA='https://wa.me/971589966706';
 
-// ---------- LOGIN (email → password, first-time setup, forgot password) ----------
+// ---------- LOGIN ----------
 let AUTH={email:''};
 function loginShell(inner){
   app.innerHTML='';
   app.appendChild($(`<div class="login-wrap"><div class="login">
-    <div class="login-logo"><span>O<b>.</b>C</span></div>
+    <div class="login-logo">O.C</div>
     <h1>OWN.CAR</h1>${inner}</div></div>`));
 }
 function renderLogin(){ stepEmail(); }
-
 function stepEmail(){
-  loginShell(`<p>Sign in to view your invoices, statements &amp; more</p>
-    <div class="field"><label>EMAIL ADDRESS</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email" value="${AUTH.email||''}" /></div>
+  loginShell(`<p>Sign in to your account</p>
+    <div class="field"><label>Email address</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email" value="${AUTH.email||''}" /></div>
     <div class="err" id="err"></div>
     <button class="btn btn-primary" id="go">Continue</button>`);
   const go=async()=>{
@@ -201,14 +228,13 @@ function stepEmail(){
   app.querySelector('#go').onclick=go;
   app.querySelector('#email').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
 }
-
 function stepPassword(){
   loginShell(`<p>Welcome back — enter your password</p>
-    <div class="field"><label>EMAIL</label><input value="${AUTH.email}" disabled /></div>
-    <div class="field"><label>PASSWORD</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password" /></div>
+    <div class="field"><label>Email</label><input value="${AUTH.email}" disabled /></div>
+    <div class="field"><label>Password</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password" /></div>
     <div class="err" id="err"></div>
     <button class="btn btn-primary" id="signin">Sign in</button>
-    <p style="margin-top:16px"><a id="forgot" style="color:var(--accent);cursor:pointer">Forgot password?</a> · <a id="changeemail" style="color:var(--muted);cursor:pointer">Use a different email</a></p>`);
+    <p style="margin-top:16px"><a id="forgot" style="cursor:pointer">Forgot password?</a> · <a id="changeemail" style="color:var(--muted);cursor:pointer">Use a different email</a></p>`);
   const signin=async()=>{
     const err=app.querySelector('#err'); err.textContent='';
     try{ await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:AUTH.email,password:app.querySelector('#pw').value})}); await boot(); }
@@ -219,20 +245,17 @@ function stepPassword(){
   app.querySelector('#forgot').onclick=async()=>{ await requestCode(); stepSetPassword(true); };
   app.querySelector('#changeemail').onclick=()=>{ AUTH.email=''; stepEmail(); };
 }
-
 let DEVCODE='';
 async function requestCode(){
   try{ const r=await api('/api/auth/send-code',{method:'POST',body:JSON.stringify({email:AUTH.email})}); DEVCODE=r.devCode||''; }
   catch(e){ DEVCODE=''; }
 }
-
 function stepSetPassword(isReset){
-  loginShell(`<p>${isReset?'Reset your password':'Welcome! Let’s set up your account'}</p>
-    <p style="font-size:13px;color:var(--muted);margin-top:-14px">We emailed a 6-digit code to <b style="color:var(--text)">${AUTH.email}</b></p>
-    <div class="field" style="margin-top:18px"><label>6-DIGIT CODE</label><input id="code" inputmode="numeric" maxlength="6" placeholder="______" /></div>
-    <div class="field"><label>${isReset?'NEW PASSWORD':'CREATE A PASSWORD'} (min 8 characters)</label><input id="pw" type="password" placeholder="Choose a password" autocomplete="new-password" /></div>
+  loginShell(`<p>${isReset?'Reset your password':'Let’s set up your account'}</p>
+    <div class="field" style="margin-top:4px"><label>6-digit code</label><input id="code" inputmode="numeric" maxlength="6" placeholder="______" /></div>
+    <div class="field"><label>${isReset?'New password':'Create a password'} (min 8)</label><input id="pw" type="password" placeholder="Choose a password" autocomplete="new-password" /></div>
     <div class="err" id="err"></div>
-    <button class="btn btn-primary" id="save">${isReset?'Reset password &amp; sign in':'Create password &amp; sign in'}</button>
+    <button class="btn btn-primary" id="save">${isReset?'Reset &amp; sign in':'Create &amp; sign in'}</button>
     <p style="margin-top:14px"><a id="resend" style="color:var(--muted);cursor:pointer">Resend code</a></p>
     ${DEVCODE?`<div class="devnote">Advance mode — your code is <b>${DEVCODE}</b></div>`:''}`);
   app.querySelector('#save').onclick=async()=>{
@@ -246,139 +269,203 @@ function stepSetPassword(isReset){
 }
 
 // ---------- SHELL ----------
-function shell(title, bodyHtml, opts={}){
+let CURRENT='home';
+function shell(bodyHtml, opts={}){
   app.innerHTML='';
-  const head = opts.back
-    ? `<div class="apphead"><div class="left"><button class="backbtn" id="back">‹</button><div class="apphead-title" style="font-size:17px;font-weight:600">${title}</div></div></div>`
-    : `<div class="apphead"><div class="left"><div class="mono"><span>O<b>.</b>C</span></div><div class="ttl">OWN.CAR<small>CLIENT PORTAL</small></div></div>
-       <button class="iconbtn" id="logout" title="Sign out" style="width:auto;padding:0 13px;gap:7px;font-size:12.5px;font-weight:500">⏻ Sign out</button></div>`;
+  let head;
+  if(opts.back){
+    head=`<div class="subhead"><button class="backbtn" id="back">‹</button><div class="htitle">${opts.title||''}</div></div>`;
+  } else if(opts.title){
+    head=`<div class="subhead"><div class="htitle">${opts.title}</div></div>`;
+  } else {
+    const initial=(ME&&ME.name?ME.name.trim()[0]:'•').toUpperCase();
+    head=`<div class="topbar"><div></div><div class="tb-right"><button class="iconbtn" id="bell">${IC.bell}<span class="dot"></span></button><button class="avatar" id="avatar">${initial}</button></div></div>`;
+  }
   app.appendChild($(`<div>${head}<div class="body">${bodyHtml}</div></div>`));
   app.appendChild(navBar());
   const b=document.getElementById('back'); if(b) b.onclick=()=>go('home');
-  const lo=document.getElementById('logout'); if(lo) lo.onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); };
+  const bell=document.getElementById('bell'); if(bell) bell.onclick=()=>toast('No new notifications.');
+  const av=document.getElementById('avatar'); if(av) av.onclick=()=>go('account');
 }
 function navBar(){
-  const items=[['home','Home','▤'],['invoices','Invoices','▦'],['service','Service','▧'],['account','Account','◍']];
+  const items=[['home','Home',IC.home],['payments','Payments',IC.list],['service','Service',IC.wrench],['account','Account',IC.user]];
   const nav=$(`<div class="nav"></div>`);
-  items.forEach(([k,l])=>{ const active=(k===CURRENT||(k==='service'&&CURRENT==='service')); const btn=$(`<button class="${active?'on':''}"><span class="ni">●</span><span class="nl">${l}</span></button>`); btn.onclick=()=>go(k==='service'?'service':k==='account'?'home':k); nav.appendChild(btn); });
+  items.forEach(([k,l,ic])=>{ const on=(k===CURRENT); const btn=$(`<button class="${on?'on':''}"><span class="navic">${ic}</span><span>${l}</span></button>`); btn.onclick=()=>go(k); nav.appendChild(btn); });
   return nav;
 }
+async function go(view){ CURRENT=view; try{
+  if(view==='home') await viewHome();
+  else if(view==='payments') await viewPayments();
+  else if(view==='service') viewBooking();
+  else if(view==='account') await viewAccount();
+  else if(view==='statement') await viewStatement();
+}catch(e){ shell(`<div class="loading">${(e&&e.error)||'Something went wrong.'}</div>`,{title:'OWN.CAR'}); } }
 
-let CURRENT='home';
-async function go(view){ CURRENT=view; try{ if(view==='home') await viewHome(); else if(view==='invoices') await viewInvoices(); else if(view==='statement') await viewStatement(); else if(view==='receipts') await viewReceipts(); else if(view==='service') viewBooking(); }catch(e){ shell('Error',`<div class="loading">${(e&&e.error)||'Something went wrong.'}</div>`); } }
+const greeting=()=>{ const h=new Date(Date.now()+4*3600*1000).getUTCHours(); return h<12?'Good morning':h<18?'Good afternoon':'Good evening'; };
 
 // ---------- HOME ----------
 async function viewHome(){
-  shell('Home','<div class="loading">Loading…</div>');
+  shell('<div class="loading">Loading…</div>');
   const me=await api('/api/me'); ME=me;
-  const v=me.vehicle;
-  const vehicleCard=v?`<div class="sec-h"><div class="t">Your Vehicle</div></div>
-    <div class="vehicle"><div class="vimg"><div class="vtag">● ACTIVE RENTAL</div></div>
-    <div class="vmeta"><div><div class="vname">${v.name}</div><div class="vsub">${v.year} · Contract ends ${v.contract_end}</div></div><div class="vplate">${v.plate}</div></div></div>`:'';
-  shell('Home',`
-    <div class="h1">Welcome back,</div><div class="sub" style="font-size:20px;color:var(--text);font-weight:600;margin-top:2px">${me.name}</div>
-    <div class="balance"><div class="lbl">Outstanding Balance</div>
-      <div class="amt"><span class="cur">AED</span>${fmt(me.outstanding)}</div>
-      ${me.nextDueDate?`<div class="due"><span class="d"></span>Next payment due ${dmy(me.nextDueDate)}</div>`:''}
-      <div class="brow"><button class="btn btn-primary" style="height:46px" id="stmt">View Statement</button></div></div>
-    <div class="qa">
-      <button class="qi" data-go="invoices"><span class="ic">▦</span><span class="qt">Invoices</span></button>
-      <button class="qi" data-go="statement"><span class="ic">▤</span><span class="qt">Statement</span></button>
-      <button class="qi" data-go="receipts"><span class="ic">✓</span><span class="qt">Receipts</span></button>
-      <button class="qi" data-go="service"><span class="ic">⚙</span><span class="qt">Service</span></button>
-    </div>${vehicleCard}`);
-  app.querySelector('#stmt').onclick=()=>go('statement');
-  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+  let invoices=[]; try{ const r=await api('/api/invoices'); invoices=r.invoices||[]; }catch(e){}
+  const invoiced=invoices.reduce((s,i)=>s+Number(i.total||0),0);
+  const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
+  const paidAmt=Math.max(invoiced-outstanding,0);
+  const pct= invoiced? Math.round(paidAmt/invoiced*100) : 0;
+  const todayIso=new Date(Date.now()+4*3600*1000).toISOString().slice(0,10);
+  const overdue=invoices.filter(i=>Number(i.balance)>0 && (String(i.status).toLowerCase()==='overdue' || (i.due_date && i.due_date<todayIso))).reduce((s,i)=>s+Number(i.balance||0),0);
+  const plate=(me.vehicle&&me.vehicle.plate)?me.vehicle.plate:'';
+  const contract=`<div class="card contract">
+    <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${plate||'Your Vehicle'}</div><div class="csub">${plate?'Number plate':''}</div></div></div>
+    <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${pct}%</span></div>
+    <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+    <div class="prow"><span>AED ${fmt(paidAmt)} PAID</span><span class="mid"></span><span>AED ${fmt(outstanding)} LEFT</span></div>
+  </div>`;
+  const overCard = `<div class="card pay">
+    <div class="phead"><span class="glabel">Total overdue</span><div class="cardicon">${IC.card}</div></div>
+    <div class="pamt"><span class="cur">AED</span>${fmt(overdue)}</div>
+    <div class="pdue">${overdue>0?'Please clear your overdue balance.':'You have no overdue payments.'}</div>
+    <button class="btn btn-primary" id="seeinv">See invoices</button>
+  </div>`;
+  const qa=`<div class="qa">
+    <button class="qi" data-act="service"><span class="ic">${IC.wrench}</span><span class="qt">Service</span></button>
+    <button class="qi" data-act="statement"><span class="ic">${IC.list}</span><span class="qt">Statement</span></button>
+    <button class="qi" data-act="contract"><span class="ic">${IC.doc}</span><span class="qt">Contract</span></button>
+    <button class="qi" data-act="help"><span class="ic">${IC.chat}</span><span class="qt">Help</span></button>
+  </div>`;
+  shell(`<div class="glabel">أهلاً · ${greeting()}</div>
+    <div class="greet-h">${(me.name||'').split(' ')[0]||'Welcome'}.</div>
+    <div style="height:18px"></div>${contract}${overCard}${qa}`);
+  const si=document.getElementById('seeinv'); if(si) si.onclick=()=>{ PAYTAB='invoices'; go('payments'); };
+  app.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const a=b.dataset.act;
+    if(a==='service') go('service');
+    else if(a==='statement') go('statement');
+    else if(a==='contract'){ PAYTAB='timeline'; go('payments'); }
+    else if(a==='help') window.open(WA,'_blank');
+  });
 }
 
-// ---------- INVOICES ----------
-async function viewInvoices(){
-  shell('Invoices','<div class="loading">Loading…</div>',{back:true});
-  const {invoices}=await api('/api/invoices');
-  const due=invoices.filter(i=>Number(i.balance)>0).reduce((s,i)=>s+Number(i.balance),0);
-  const rows=invoices.map(i=>{
-    const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
-    const label=st==='paid'?'Paid':st==='overdue'?'Overdue':'Due';
-    return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}"><div class="ic">▦</div><div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">Issued ${dmy(i.date)} · Due ${dmy(i.due_date)}</div></div>
-      <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${label}</span></div></div>`;
-  }).join('');
-  shell('Invoices',`<div class="scell hi" style="margin:6px 0 16px"><div class="sl">Total Due · ${invoices.filter(i=>Number(i.balance)>0).length} invoices</div><div class="sv">AED ${fmt(due)}</div></div>${rows||'<div class="loading">No invoices yet.</div>'}<div class="muted center" style="font-size:11px;margin-top:6px">Tap any invoice to download the PDF</div>`,{back:true});
-  app.querySelectorAll('.row.tap[data-inv]').forEach(r=>r.onclick=()=>downloadFile('/api/invoices/'+r.dataset.inv+'/pdf', r.dataset.num+'.pdf'));
-}
-
-// ---------- STATEMENT ----------
+// ---------- STATEMENT (from Zoho) ----------
 let STMT_RANGE={from:'',to:''};
 async function viewStatement(){
-  shell('Statement','<div class="loading">Loading…</div>',{back:true});
+  shell('<div class="loading">Loading…</div>',{title:'Statement',back:true});
   const hasRange=!!(STMT_RANGE.from||STMT_RANGE.to);
   const q=hasRange?('?from='+encodeURIComponent(STMT_RANGE.from||'')+'&to='+encodeURIComponent(STMT_RANGE.to||'')):'';
   const {entries,summary}=await api('/api/statement'+q);
-  const led=entries.map(e=>`<div class="led"><div class="ldot ${e.credit?'cre':'deb'}"></div>
-    <div class="m"><div class="r1" style="font-weight:500">${e.label}</div><div class="r2">${dmy(e.date)}</div></div>
-    <div class="lamt ${e.credit?'cre':''}">${e.credit?'−'+fmt(e.credit):fmt(e.debit)}</div></div>`).join('');
-  const ledHtml=entries.length?led:'<div class="loading">No transactions in this date range.</div>';
-  shell('Statement of Account',`
+  const led=entries.map(e=>`<div class="row" style="margin-bottom:10px"><div class="ic" style="color:${e.credit?'var(--green)':'var(--accent)'}">${e.credit?IC.check:IC.doc}</div>
+    <div class="m"><div class="r1">${e.label}</div><div class="r2">${dmy(e.date)}</div></div>
+    <div class="r"><div class="amt2" style="${e.credit?'color:var(--green)':''}">${e.credit?'− AED '+fmt(e.credit):'AED '+fmt(e.debit)}</div></div></div>`).join('');
+  shell(`
     <div class="drange">
-      <div class="dfield"><label>FROM</label><input type="date" id="from" value="${STMT_RANGE.from||''}"></div>
-      <div class="dfield"><label>TILL</label><input type="date" id="to" value="${STMT_RANGE.to||''}"></div>
+      <div class="dfield"><label>From</label><input type="date" id="from" value="${STMT_RANGE.from||''}"></div>
+      <div class="dfield"><label>Till</label><input type="date" id="to" value="${STMT_RANGE.to||''}"></div>
     </div>
-    ${hasRange?'<div style="text-align:right;margin:-6px 2px 12px"><a id="clr" style="color:var(--accent);font-size:12px;cursor:pointer">Clear dates · show all</a></div>':'<div style="margin-bottom:8px"></div>'}
-    <div class="sgrid">
-      ${hasRange?`<div class="scell"><div class="sl">Opening</div><div class="sv">AED ${fmt(summary.opening||0)}</div></div>`:''}
-      <div class="scell"><div class="sl">Invoiced${hasRange?' (period)':''}</div><div class="sv">AED ${fmt(summary.invoiced)}</div></div>
-      <div class="scell"><div class="sl">Paid${hasRange?' (period)':''}</div><div class="sv" style="color:var(--green)">AED ${fmt(summary.paid)}</div></div>
-      <div class="scell hi"><div class="sl">Closing Balance (Due)</div><div class="sv">AED ${fmt(summary.closing)}</div></div>
+    ${hasRange?'<div style="text-align:right;margin:2px 2px 12px"><a id="clr" style="font-size:12px;cursor:pointer">Clear · show all</a></div>':'<div style="height:10px"></div>'}
+    <div class="summary">
+      <div class="glabel">Closing balance (due)</div>
+      <div class="sv">AED ${fmt(summary.closing)}</div>
+      <div class="glabel mut" style="margin-top:10px">Invoiced AED ${fmt(summary.invoiced)} · Paid AED ${fmt(summary.paid)}</div>
     </div>
-    <button class="btn btn-primary" id="dlstmt" style="height:48px;margin:2px 0 16px">⤓ Download Statement (PDF)</button>
-    <div style="font-size:11px;color:var(--muted2);letter-spacing:2px;margin:4px 2px 6px">TRANSACTIONS</div>${ledHtml}`,{back:true});
+    <button class="btn btn-primary" id="dlstmt" style="margin-bottom:18px">Download statement (PDF)</button>
+    <div class="glabel mut" style="margin:4px 2px 12px">Transactions</div>
+    ${entries.length?led:'<div class="loading">No transactions in this range.</div>'}`,{title:'Statement',back:true});
   const reload=()=>{ STMT_RANGE.from=app.querySelector('#from').value; STMT_RANGE.to=app.querySelector('#to').value; go('statement'); };
-  app.querySelector('#from').onchange=reload;
-  app.querySelector('#to').onchange=reload;
+  app.querySelector('#from').onchange=reload; app.querySelector('#to').onchange=reload;
   const clr=document.getElementById('clr'); if(clr) clr.onclick=()=>{ STMT_RANGE={from:'',to:''}; go('statement'); };
   const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf'+q,'Statement.pdf');
 }
 
-// ---------- RECEIPTS ----------
-async function viewReceipts(){
-  shell('Receipts','<div class="loading">Loading…</div>',{back:true});
-  const {payments}=await api('/api/receipts');
-  const rows=payments.map(p=>`<div class="row tap" data-rcpt="${p.payment_id}" data-num="${p.payment_number}"><div class="ic" style="background:var(--green-soft);border-color:transparent">✓</div>
-    <div class="m"><div class="r1">${p.payment_number}<span class="dl">⤓ PDF</span></div><div class="r2">${dmy(p.date)} · ${p.payment_mode||''}${p.invoice_numbers?' · '+p.invoice_numbers:''}</div></div>
-    <div class="r"><div class="amt2" style="color:var(--green)">AED ${fmt(p.amount)}</div></div></div>`).join('');
-  shell('Receipts',(rows?rows+'<div class="muted center" style="font-size:11px;margin-top:6px">Tap any receipt to download the PDF</div>':'<div class="loading">No payments yet.</div>'),{back:true});
-  app.querySelectorAll('.row.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
+// ---------- PAYMENTS (timeline / invoices / receipts) ----------
+let PAYTAB='timeline';
+async function viewPayments(){
+  shell('<div class="loading">Loading…</div>',{title:'Payments'});
+  const seg=`<div class="seg" id="seg">
+    <button data-t="timeline" class="${PAYTAB==='timeline'?'on':''}">Timeline</button>
+    <button data-t="invoices" class="${PAYTAB==='invoices'?'on':''}">Invoices</button>
+    <button data-t="receipts" class="${PAYTAB==='receipts'?'on':''}">Receipts</button></div>`;
+  let content='';
+  if(PAYTAB==='timeline'){
+    const {invoices}=await api('/api/invoices');
+    invoices.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const dueId=(invoices.find(i=>Number(i.balance)>0)||{}).invoice_id;
+    const rows=invoices.map((i,idx)=>{
+      const isPaid=Number(i.balance)<=0; const isDue=i.invoice_id===dueId;
+      const st=isPaid?'paid':isDue?'due':'sched';
+      const dd=daysUntil(i.due_date);
+      const lbl=isPaid?'Paid':isDue?(dd!=null&&dd<0?Math.abs(dd)+' days overdue':dd!=null?'Due in '+Math.max(dd,0)+' days':'Due now'):'Scheduled';
+      const ico=isPaid?IC.check:isDue?IC.clock:(idx+1);
+      return `<div class="tl-row ${isDue?'due':''} tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}">
+        <div class="tl-ic ${st}">${ico}</div>
+        <div class="tl-m"><div class="tl-t">Month ${idx+1} · ${dmy(i.date)}</div><div class="glabel mut tl-s">${lbl}</div></div>
+        <div class="tl-amt">AED ${fmt(i.total)}</div></div>`;
+    }).join('');
+    content=`<div class="sec-h" style="margin:2px 2px 14px"><span class="glabel">Monthly timeline</span><a id="export" style="cursor:pointer;font-size:12px">Export →</a></div>
+      ${rows||'<div class="loading">No payments yet.</div>'}
+      <div class="muted center" style="font-size:11px;margin-top:6px">Tap any month to download its invoice PDF</div>`;
+  } else if(PAYTAB==='invoices'){
+    const {invoices}=await api('/api/invoices');
+    const rows=invoices.map(i=>{
+      const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
+      return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}"><div class="ic">${IC.doc}</div>
+        <div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">Issued ${dmy(i.date)} · Due ${dmy(i.due_date)}</div></div>
+        <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${st==='paid'?'Paid':st==='overdue'?'Overdue':'Due'}</span></div></div>`;
+    }).join('');
+    content=rows||'<div class="loading">No invoices yet.</div>';
+  } else {
+    const {payments}=await api('/api/receipts');
+    const rows=payments.map(p=>`<div class="row tap" data-rcpt="${p.payment_id}" data-num="${p.payment_number}"><div class="ic" style="color:var(--green)">${IC.check}</div>
+      <div class="m"><div class="r1">${p.payment_number}<span class="dl">⤓ PDF</span></div><div class="r2">${dmy(p.date)} · ${p.payment_mode||''}</div></div>
+      <div class="r"><div class="amt2" style="color:var(--green)">AED ${fmt(p.amount)}</div></div></div>`).join('');
+    content=rows||'<div class="loading">No receipts yet.</div>';
+  }
+  shell(seg+content,{title:'Payments'});
+  app.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{ PAYTAB=b.dataset.t; go('payments'); });
+  const ex=document.getElementById('export'); if(ex) ex.onclick=()=>downloadFile('/api/statement/pdf','Statement.pdf');
+  app.querySelectorAll('.tap[data-inv]').forEach(r=>r.onclick=()=>downloadFile('/api/invoices/'+r.dataset.inv+'/pdf', r.dataset.num+'.pdf'));
+  app.querySelectorAll('.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
 }
 
-// ---------- BOOKING (in-app form → saved to backend / Supabase) ----------
+// ---------- ACCOUNT ----------
+async function viewAccount(){
+  const me=ME||{};
+  shell(`
+    <div class="card"><div class="glabel">Account</div>
+      <div style="font-size:20px;font-weight:800;margin-top:8px">${me.name||''}</div>
+      <div class="muted" style="font-size:13px;margin-top:3px">${me.email||''}</div>
+      ${me.phone?`<div class="muted" style="font-size:13px;margin-top:2px">${me.phone}</div>`:''}
+    </div>
+    <button class="btn btn-ghost" id="logout" style="margin-top:16px">Sign out</button>`,{title:'Account'});
+  document.getElementById('logout').onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); };
+}
+
+// ---------- BOOKING ----------
 function viewBooking(){
   const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
   const times=['09:00','11:30','14:00','16:30'];
   const veh=ME&&ME.vehicle?ME.vehicle.name:'';
   const plate=ME&&ME.vehicle?ME.vehicle.plate:'';
   const phone=ME&&ME.phone?ME.phone:'';
-  // Earliest bookable date = today + 4 (Dubai time); open through ~2 months out.
   const minIso=new Date(Date.now()+4*3600*1000+4*864e5).toISOString().slice(0,10);
   const maxIso=new Date(Date.now()+4*3600*1000+63*864e5).toISOString().slice(0,10);
   if(!booking.service_type) booking.service_type='Full Service';
-  shell('Book Maintenance',`
-    <label>CAR NAME</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}">
+  shell(`
+    <label>Car name</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}">
     <div style="height:14px"></div>
-    <label>NUMBER PLATE</label><input id="plate" placeholder="e.g. DXB A 12345" value="${plate||''}">
+    <label>Number plate</label><input id="plate" placeholder="e.g. DXB A 12345" value="${plate||''}">
     <div style="height:14px"></div>
-    <label>PHONE NUMBER</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
+    <label>Phone number</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
     <div style="height:16px"></div>
-    <label>SERVICE TYPE</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
-    <label>PREFERRED DATE</label><input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
-    <label>TIME SLOT</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
-    <div id="slotnote" class="muted" style="font-size:11.5px;margin:-8px 2px 16px;min-height:14px"></div>
-    <label>DESCRIPTION OF WORK REQUIRED</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
-    <button class="btn btn-primary" id="confirm">Confirm Booking</button>`,{back:true});
+    <label>Service type</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
+    <label>Preferred date</label><input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
+    <label>Time slot</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+    <div id="slotnote" class="muted" style="font-size:11.5px;margin:6px 2px 16px;min-height:14px"></div>
+    <label>Description of work required</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
+    <button class="btn btn-primary" id="confirm">Confirm booking</button>`,{title:'Book a Service',back:true});
   app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
   app.querySelectorAll('#times .tcell').forEach(b=>b.onclick=()=>{ if(b.classList.contains('disabled')) return; booking.time=b.dataset.t; app.querySelectorAll('#times .tcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
   async function refreshSlots(){
-    const pdate=app.querySelector('#pdate').value;
-    const note=app.querySelector('#slotnote');
-    const cells=app.querySelectorAll('#times .tcell');
+    const pdate=app.querySelector('#pdate').value; const note=app.querySelector('#slotnote'); const cells=app.querySelectorAll('#times .tcell');
     cells.forEach(c=>c.classList.remove('disabled'));
     if(!pdate){ note.textContent='Pick a date to see available times.'; return; }
     let taken=[], full=false;
@@ -405,8 +492,8 @@ function viewBooking(){
 }
 function showConfirmModal(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">
-    <div class="rcpt-check" style="margin:0 auto 14px">✓</div>
-    <div style="font-size:19px;font-weight:800;font-family:'Archivo',system-ui,sans-serif">Booking received</div>
+    <div class="rcheck">${IC.check}</div>
+    <div style="font-size:20px;font-weight:800">Booking received</div>
     <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you! You'll receive a confirmation from <b style="color:var(--accent)">info@own.car</b>.</p>
     <button class="btn btn-primary" id="mok">OK</button></div></div>`);
   document.body.appendChild(ov);

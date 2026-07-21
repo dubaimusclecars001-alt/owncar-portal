@@ -4,7 +4,7 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
@@ -136,8 +136,10 @@ app.get("/api/me", requireAuth, async (req, res) => {
     const invoices = await getInvoices(c.contact_id);
     const outstanding = invoices.reduce((s, i) => s + money(i.balance), 0);
     const nextDue = invoices.filter(i => money(i.balance) > 0).sort((a,b)=> (a.due_date||"").localeCompare(b.due_date||""))[0];
+    let vehicle = c.vehicle;
+    if (!vehicle) { try { vehicle = await getVehicle(c.contact_id); } catch (e) {} }
     res.json({
-      name: c.contact_name, email: c.email, vehicle: c.vehicle, phone: c.phone || null,
+      name: c.contact_name, email: c.email, vehicle, phone: c.phone || null,
       outstanding, nextDueDate: nextDue ? nextDue.due_date : null,
     });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load your account from Zoho Books." }); }

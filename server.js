@@ -149,8 +149,8 @@ app.get("/api/vehicles", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);
     if (!c) return res.status(404).json({ error: "Account not found" });
-    const plates = await getVehicles(c.contact_id);
-    res.json({ plates });
+    const vehicles = await getVehicles(c.contact_id);
+    res.json({ vehicles, plates: vehicles.map((v) => v && v.plate).filter(Boolean) });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load vehicles." }); }
 });
 

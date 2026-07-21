@@ -314,9 +314,12 @@ async function viewHome(){
   const pct= invoiced? Math.round(paidAmt/invoiced*100) : 0;
   const todayIso=new Date(Date.now()+4*3600*1000).toISOString().slice(0,10);
   const overdue=invoices.filter(i=>Number(i.balance)>0 && (String(i.status).toLowerCase()==='overdue' || (i.due_date && i.due_date<todayIso))).reduce((s,i)=>s+Number(i.balance||0),0);
-  const plate=(me.vehicle&&me.vehicle.plate)?me.vehicle.plate:'';
+  const v=me.vehicle||{};
+  const plate=v.plate||'';
+  const carName=v.car||v.name||'';
+  const carSub=[plate, [v.year,v.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
   const contract=`<div class="card contract">
-    <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${plate||'Your Vehicle'}</div><div class="csub">${plate?'Number plate':''}</div></div></div>
+    <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
     <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${pct}%</span></div>
     <div class="track"><div class="fill" style="width:${pct}%"></div></div>
     <div class="prow"><span>AED ${fmt(paidAmt)} PAID</span><span class="mid"></span><span>AED ${fmt(outstanding)} LEFT</span></div>
@@ -445,7 +448,7 @@ async function viewAccount(){
 function viewBooking(){
   const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
   const times=['09:00','11:30','14:00','16:30'];
-  const veh=ME&&ME.vehicle?ME.vehicle.name:'';
+  const veh=ME&&ME.vehicle?(ME.vehicle.car||ME.vehicle.name||''):'';
   const plate=ME&&ME.vehicle?ME.vehicle.plate:'';
   const phone=ME&&ME.phone?ME.phone:'';
   const minIso=new Date(Date.now()+4*3600*1000+4*864e5).toISOString().slice(0,10);
@@ -493,12 +496,16 @@ function viewBooking(){
   };
 }
 async function showCars(){
-  let plates=[]; try{ const r=await api('/api/vehicles'); plates=r.plates||[]; }catch(e){}
-  const list = plates.length
-    ? plates.map(p=>`<div class="row" style="margin-bottom:10px"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${p}</div><div class="r2">Number plate</div></div></div>`).join('')
+  let cars=[]; try{ const r=await api('/api/vehicles'); cars=r.vehicles||(r.plates||[]).map(p=>({plate:p})); }catch(e){}
+  const list = cars.length
+    ? cars.map(c=>{
+        const title=c.car||c.plate||'Vehicle';
+        const sub=c.car?[c.plate,[c.year,c.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · '):'Number plate';
+        return `<div class="row" style="margin-bottom:10px"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${title}</div><div class="r2">${sub}</div></div></div>`;
+      }).join('')
     : '<div class="muted center" style="padding:22px 0">No cars found on your account.</div>';
   const ov=$(`<div class="modal-ov"><div class="modal-card" style="text-align:left;max-width:380px">
-    <div class="glabel">Your cars${plates.length>1?' · '+plates.length:''}</div>
+    <div class="glabel">Your cars${cars.length>1?' · '+cars.length:''}</div>
     <div style="height:14px"></div>${list}
     <button class="btn btn-primary" id="cclose" style="margin-top:8px">Close</button></div></div>`);
   document.body.appendChild(ov);

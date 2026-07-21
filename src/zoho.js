@@ -1,6 +1,7 @@
 // Zoho Books data access. Uses sample data when USE_MOCK=true, otherwise
 // talks to the real Zoho Books API with a read-only refresh token.
 import { mockCustomers, mockInvoices, mockPayments } from "./mock.js";
+import { lookupCar, carLabel, colorLabel } from "./fleet.js";
 
 const USE_MOCK = (process.env.USE_MOCK || "true").toLowerCase() !== "false";
 const ORG = process.env.ZOHO_ORG_ID;
@@ -61,32 +62,49 @@ export async function getCustomerByEmail(email) {
 // (custom field, line-item text, or reference/notes). Cached briefly per contact.
 const _vehCache = new Map(); // contactId -> { plates, until }
 
-// One plate for the home card (light: most recent invoice only).
+// Turn a raw plate string into a rich vehicle object, matching the plate against
+// the Muscle Cars fleet inventory to attach the make / model / year / colour.
+export function enrichPlate(plate) {
+  if (!plate) return null;
+  const rec = { plate: String(plate).trim() };
+  const info = lookupCar(plate);
+  if (info) {
+    if (info.car) rec.car = carLabel(info.car);
+    if (/^\d{4}$/.test(info.year || "")) rec.year = info.year;
+    const col = colorLabel(info.color);
+    if (col) rec.color = col;
+  }
+  return rec;
+}
+
+// One vehicle for the home card (light: most recent invoice only).
 export async function getVehicle(contactId) {
   if (USE_MOCK) {
     const c = mockCustomers.find((x) => x.contact_id === contactId);
-    return c ? c.vehicle : null;
+    if (!c || !c.vehicle) return null;
+    const v = enrichPlate(c.vehicle.plate) || {};
+    return { plate: c.vehicle.plate, car: v.car || c.vehicle.name, year: v.year || c.vehicle.year, color: v.color };
   }
   const cached = _vehCache.get(contactId);
-  if (cached && Date.now() < cached.until && cached.plates.length) return { plate: cached.plates[0] };
+  if (cached && Date.now() < cached.until && cached.plates.length) return enrichPlate(cached.plates[0]);
   try {
     const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 1 });
     const inv0 = (list.invoices || [])[0];
     if (!inv0) return null;
     const full = await booksGet(`invoices/${inv0.invoice_id}`);
     const p = extractAllPlates((full && full.invoice) || {})[0];
-    return p ? { plate: p } : null;
+    return p ? enrichPlate(p) : null;
   } catch (e) { return null; }
 }
 
-// All distinct plates for the "Show all cars" list (heavier scan; cached 15 min).
+// All distinct vehicles for the "Show all cars" list (heavier scan; cached 15 min).
 export async function getVehicles(contactId) {
   if (USE_MOCK) {
     const c = mockCustomers.find((x) => x.contact_id === contactId);
-    return c && c.vehicle && c.vehicle.plate ? [c.vehicle.plate] : [];
+    return c && c.vehicle && c.vehicle.plate ? [ (await getVehicle(contactId)) ] : [];
   }
   const cached = _vehCache.get(contactId);
-  if (cached && Date.now() < cached.until) return cached.plates;
+  if (cached && Date.now() < cached.until) return cached.plates.map(enrichPlate);
   const plates = [];
   try {
     const list = await booksGet("invoices", { customer_id: contactId, sort_column: "date", sort_order: "D", per_page: 20 });
@@ -100,7 +118,7 @@ export async function getVehicles(contactId) {
     }
   } catch (e) { /* ignore */ }
   _vehCache.set(contactId, { plates, until: Date.now() + 15 * 60 * 1000 });
-  return plates;
+  return plates.map(enrichPlate);
 }
 
 function plateFromText(s) {

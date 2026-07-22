@@ -4,9 +4,11 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, enrichPlate, USE_MOCK } from "./src/zoho.js";
+import { normPlate } from "./src/fleet.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
-import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
+import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
+import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -137,12 +139,20 @@ app.get("/api/me", requireAuth, async (req, res) => {
     const invoices = await getInvoices(c.contact_id);
     const outstanding = invoices.reduce((s, i) => s + money(i.balance), 0);
     const nextDue = invoices.filter(i => money(i.balance) > 0).sort((a,b)=> (a.due_date||"").localeCompare(b.due_date||""))[0];
-    let vehicle = null;
-    try { vehicle = await getVehicle(c.contact_id); } catch (e) {}
-    if (!vehicle) vehicle = c.vehicle || null;
+    // Admin-managed cars override the Zoho-derived vehicle when a record exists.
+    let vehicle = null, active = true;
+    let managed = null;
+    try { managed = await getManagedPlates(c.email); } catch (e) {}
+    if (managed !== null) {
+      active = managed.length > 0;
+      vehicle = managed.length ? enrichPlate(managed[0]) : null;
+    } else {
+      try { vehicle = await getVehicle(c.contact_id); } catch (e) {}
+      if (!vehicle) vehicle = c.vehicle || null;
+    }
     res.json({
       name: c.contact_name, email: c.email, vehicle, phone: c.phone || null,
-      outstanding, nextDueDate: nextDue ? nextDue.due_date : null,
+      active, outstanding, nextDueDate: nextDue ? nextDue.due_date : null,
     });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load your account from Zoho Books." }); }
 });
@@ -151,8 +161,10 @@ app.get("/api/vehicles", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);
     if (!c) return res.status(404).json({ error: "Account not found" });
-    const vehicles = await getVehicles(c.contact_id);
-    res.json({ vehicles, plates: vehicles.map((v) => v && v.plate).filter(Boolean) });
+    let managed = null;
+    try { managed = await getManagedPlates(c.email); } catch (e) {}
+    const vehicles = managed !== null ? managed.map(enrichPlate) : await getVehicles(c.contact_id);
+    res.json({ vehicles, plates: vehicles.map((v) => v && v.plate).filter(Boolean), active: managed === null ? true : managed.length > 0 });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load vehicles." }); }
 });
 
@@ -339,6 +351,85 @@ app.post("/api/admin/bookings/:id/status", requireAdmin, async (req, res) => {
     res.json({ ok: true, booking });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not update status." }); }
 });
+// ---- Admin: customer car management ----
+// Builds the full detail for one customer: name (Zoho), managed state, and the
+// enriched car list (make/model/%-owned looked up from the Muscle Cars fleet).
+async function customerDetail(email) {
+  const e = (email || "").toLowerCase();
+  let customer = null;
+  try { customer = await getCustomerByEmail(e); } catch (err) {}
+  const managed = await getManagedPlates(e);
+  let plates, isManaged;
+  if (managed !== null) {
+    plates = managed; isManaged = true;
+  } else {
+    isManaged = false; plates = [];
+    if (customer) { try { plates = (await getVehicles(customer.contact_id)).map((v) => v && v.plate).filter(Boolean); } catch (err) {} }
+  }
+  const cars = plates.map((p) => enrichPlate(p) || { plate: p });
+  return { email: e, name: customer ? customer.contact_name : null, found: !!customer, managed: isManaged, active: cars.length > 0, cars };
+}
+
+// The effective plate list for a customer right now (managed list, or the
+// Zoho-derived list if they've never been managed). Used to seed edits.
+async function effectivePlates(email) {
+  const e = (email || "").toLowerCase();
+  const managed = await getManagedPlates(e);
+  if (managed !== null) return managed.slice();
+  let plates = [];
+  try {
+    const customer = await getCustomerByEmail(e);
+    if (customer) plates = (await getVehicles(customer.contact_id)).map((v) => v && v.plate).filter(Boolean);
+  } catch (err) {}
+  return plates;
+}
+
+// List of every client who has registered a password.
+app.get("/api/admin/customers", requireAdmin, async (req, res) => {
+  try { res.json({ customers: await listUsers() }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not load customers." }); }
+});
+
+// Live plate lookup against the fleet (make / model / %-owned) for the add form.
+app.get("/api/admin/lookup", requireAdmin, (req, res) => {
+  const plate = (req.query.plate || "").trim();
+  if (!plate) return res.json({ found: false, vehicle: null });
+  const v = enrichPlate(plate) || { plate };
+  res.json({ found: !!(v && v.car), vehicle: v });
+});
+
+app.get("/api/admin/customers/:email", requireAdmin, async (req, res) => {
+  try { res.json(await customerDetail(req.params.email)); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not load customer." }); }
+});
+
+// Add a car (by plate) to a customer.
+app.post("/api/admin/customers/:email/cars", requireAdmin, async (req, res) => {
+  try {
+    const email = (req.params.email || "").toLowerCase();
+    const plate = (req.body.plate || "").trim();
+    if (!plate) return res.status(400).json({ error: "Enter a number plate." });
+    const plates = await effectivePlates(email);
+    if (!plates.some((p) => normPlate(p) === normPlate(plate))) plates.push(plate);
+    await setManagedPlates(email, plates);
+    res.json(await customerDetail(email));
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not add the car." }); }
+});
+
+// Remove a car (by plate) from a customer. Removing the last car makes the
+// customer inactive on their home screen.
+app.post("/api/admin/customers/:email/cars/remove", requireAdmin, async (req, res) => {
+  try {
+    const email = (req.params.email || "").toLowerCase();
+    const target = normPlate(req.body.plate || "");
+    if (!target) return res.status(400).json({ error: "No plate given." });
+    let plates = await effectivePlates(email);
+    plates = plates.filter((p) => normPlate(p) !== target);
+    await setManagedPlates(email, plates);
+    res.json(await customerDetail(email));
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not remove the car." }); }
+});
+
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 
 // ---- static frontend ----

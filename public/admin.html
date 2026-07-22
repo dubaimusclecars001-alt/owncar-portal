@@ -78,6 +78,44 @@
   .st-done{background:var(--green-soft);color:#7fe0b4;border:1px solid rgba(67,181,129,.5);}
   .empty-msg{color:var(--muted);text-align:center;padding:30px 0;font-size:14px;}
   .hint{font-size:11px;color:var(--muted2);margin-top:2px;}
+  /* view nav (Bookings | Customers) */
+  .vnav{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;}
+  .vnav button{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:8px 15px;border-radius:9px;}
+  .vnav button.on{background:var(--surface3);color:var(--text);}
+
+  /* customers area */
+  .searchbox{margin-bottom:12px;}
+  .clist{max-height:64vh;overflow:auto;margin:-2px;padding:2px;}
+  .crow{display:block;width:100%;text-align:left;padding:11px 13px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--surface2);color:inherit;cursor:pointer;transition:border-color .12s,background .12s;}
+  .crow:hover{border-color:var(--line2);}
+  .crow.on{border-color:var(--accent);background:var(--accent-soft);}
+  .crow .ce{font-size:13.5px;font-weight:600;word-break:break-all;}
+  .crow .cu{font-size:11px;color:var(--muted2);margin-top:2px;}
+  .cust-empty{color:var(--muted);text-align:center;padding:26px 0;font-size:14px;}
+
+  .detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px;}
+  .detail-head .dn{font-size:18px;font-weight:800;font-family:'Archivo',sans-serif;}
+  .detail-head .de{font-size:12.5px;color:var(--muted);margin-top:2px;word-break:break-all;}
+  .badge{font-size:10px;font-weight:800;letter-spacing:1px;padding:5px 11px;border-radius:20px;text-transform:uppercase;white-space:nowrap;flex:0 0 auto;}
+  .badge.act{background:var(--green-soft);color:#7fe0b4;border:1px solid rgba(67,181,129,.5);}
+  .badge.ina{background:var(--amber-soft);color:#f0c88a;border:1px solid rgba(224,164,74,.4);}
+  .sectlabel{font-size:11px;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;margin:20px 2px 10px;}
+  .carrow{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:13px;margin-bottom:10px;background:var(--surface2);}
+  .carrow .cimg{width:44px;height:44px;border-radius:10px;flex:0 0 auto;border:1px solid var(--line2);background:repeating-linear-gradient(135deg,#26262c,#26262c 6px,#1c1c21 6px,#1c1c21 12px);}
+  .carrow .cinfo{flex:1;min-width:0;}
+  .carrow .cn{font-size:14.5px;font-weight:700;font-family:'Archivo',sans-serif;}
+  .carrow .cp{font-size:12px;color:var(--muted);margin-top:2px;}
+  .carrow .cpct{font-size:12px;color:var(--accent);font-weight:700;margin-top:3px;}
+  .rmbtn{border:1px solid rgba(225,73,73,.4);background:rgba(225,73,73,.12);color:#ff8a97;border-radius:10px;font-size:12px;font-weight:700;padding:9px 13px;flex:0 0 auto;}
+  .nocars{color:var(--muted);border:1px dashed var(--line2);border-radius:13px;padding:20px 16px;text-align:center;font-size:13.5px;line-height:1.6;background:var(--surface2);}
+  .addbox{margin-top:8px;border:1px solid var(--line);border-radius:14px;padding:15px;background:var(--surface2);}
+  .addrow{display:flex;gap:10px;}
+  .addrow input{flex:1;}
+  .addrow .btn{flex:0 0 auto;}
+  .preview{font-size:12.5px;margin:10px 2px 0;min-height:18px;line-height:1.5;}
+  .preview.ok{color:#7fe0b4;} .preview.no{color:var(--muted);}
+  .detail-ph{color:var(--muted);text-align:center;padding:60px 20px;font-size:14px;line-height:1.6;}
+
   .gload{position:fixed;inset:0;background:rgba(5,5,7,.5);display:none;align-items:center;justify-content:center;z-index:200;}
   .gload.show{display:flex;} .gspin{width:40px;height:40px;border:3px solid rgba(255,255,255,.25);border-top-color:#D4AF37;border-radius:50%;animation:sp .7s linear infinite;}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -93,6 +131,24 @@ const gload=document.getElementById('gload');
 const STATUSES=['Not confirmed yet','Confirmed','Service done'];
 const stClass={'Not confirmed yet':'st-not','Confirmed':'st-conf','Service done':'st-done'};
 let BOOKINGS=[], VY, VM, SEL=null, STORAGE='';
+let VIEW='bookings', CUSTOMERS=[], CUST_SEL=null, CUST_DETAIL=null;
+
+// Shared top bar with the Bookings | Customers switch.
+function navHeader(active, info){
+  return `<div class="top">
+    <div class="brand"><div class="mono"><span>O<b>.</b>C</span></div><div><h1>OWN.CAR Admin<small>STAFF DASHBOARD</small></h1></div></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="vnav"><button data-v="bookings" class="${active==='bookings'?'on':''}">Bookings</button><button data-v="customers" class="${active==='customers'?'on':''}">Customers</button></div>
+      <span class="pillinfo">${esc(info||('storage: '+STORAGE))}</span>
+      <button class="btn ghost" id="logout">Sign out</button>
+    </div>
+  </div>`;
+}
+function wireHeader(){
+  const lo=document.getElementById('logout'); if(lo) lo.onclick=async()=>{ await api('/api/admin/logout',{method:'POST'}); renderLogin(); };
+  document.querySelectorAll('.vnav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+}
+function go(view){ VIEW=view; if(view==='customers') renderCustomers(); else renderDash(); }
 
 async function api(path,opts){
   gload.classList.add('show');
@@ -139,18 +195,12 @@ function renderDash(){
   app.innerHTML='';
   const now=new Date();
   if(VY===undefined){ VY=now.getFullYear(); VM=now.getMonth(); }
-  app.appendChild($(`<div class="top">
-    <div class="brand"><div class="mono"><span>O<b>.</b>C</span></div><div><h1>OWN.CAR Admin<small>MAINTENANCE BOOKINGS</small></h1></div></div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span class="pillinfo">${BOOKINGS.length} total · storage: ${esc(STORAGE)}</span>
-      <button class="btn ghost" id="logout">Sign out</button>
-    </div>
-  </div>`));
+  app.appendChild($(navHeader('bookings', BOOKINGS.length+' bookings · storage: '+STORAGE)));
   const grid=$(`<div class="grid"></div>`);
   grid.appendChild(buildCalendar());
   grid.appendChild(buildList());
   app.appendChild(grid);
-  document.getElementById('logout').onclick=async()=>{ await api('/api/admin/logout',{method:'POST'}); renderLogin(); };
+  wireHeader();
 }
 
 function buildCalendar(){
@@ -210,6 +260,89 @@ function buildList(){
   });
   setTimeout(()=>{ const s=document.getElementById('showall'); if(s) s.onclick=()=>{ SEL=null; renderDash(); }; },0);
   return card;
+}
+
+// ---------- CUSTOMERS ----------
+async function renderCustomers(){
+  app.innerHTML='';
+  app.appendChild($(navHeader('customers','storage: '+STORAGE)));
+  const grid=$(`<div class="grid"></div>`);
+  grid.appendChild($(`<div class="card"><h2 id="clisttitle">Registered customers</h2><div class="searchbox"><input id="csearch" placeholder="Search email…" autocomplete="off"></div><div class="clist" id="clist"><div class="cust-empty">Loading…</div></div></div>`));
+  grid.appendChild($(`<div class="card" id="cdetail"></div>`));
+  app.appendChild(grid);
+  wireHeader();
+  renderDetailPlaceholder();
+  try{ const d=await api('/api/admin/customers'); CUSTOMERS=d.customers||[]; }catch(e){ CUSTOMERS=[]; }
+  renderCustList('');
+  const s=document.getElementById('csearch'); if(s) s.oninput=()=>renderCustList(s.value.trim().toLowerCase());
+  if(CUST_SEL && CUSTOMERS.some(c=>c.email===CUST_SEL)) openCustomer(CUST_SEL);
+}
+function renderCustList(q){
+  const box=document.getElementById('clist'); if(!box) return;
+  const title=document.getElementById('clisttitle'); if(title) title.textContent='Registered customers ('+CUSTOMERS.length+')';
+  box.innerHTML='';
+  const list=CUSTOMERS.filter(c=>!q||(c.email||'').toLowerCase().includes(q));
+  if(!list.length){ box.appendChild($(`<div class="cust-empty">${CUSTOMERS.length?'No match.':'No customers have set a password yet.'}</div>`)); return; }
+  list.forEach(c=>{
+    const on=c.email===CUST_SEL;
+    const row=$(`<button class="crow ${on?'on':''}"><div class="ce">${esc(c.email)}</div><div class="cu">Password set ${c.updated?fmtDate(c.updated):'—'}</div></button>`);
+    row.onclick=()=>{ CUST_SEL=c.email; renderCustList(q); openCustomer(c.email); };
+    box.appendChild(row);
+  });
+}
+function renderDetailPlaceholder(){
+  const box=document.getElementById('cdetail'); if(box) box.innerHTML='<div class="detail-ph">Select a customer to view and manage their cars.</div>';
+}
+async function openCustomer(email){
+  const box=document.getElementById('cdetail'); if(!box) return;
+  box.innerHTML='<div class="detail-ph">Loading…</div>';
+  let d; try{ d=await api('/api/admin/customers/'+encodeURIComponent(email)); }
+  catch(e){ box.innerHTML='<div class="detail-ph">Could not load this customer.</div>'; return; }
+  CUST_DETAIL=d; renderDetail(d);
+}
+function renderDetail(d){
+  const box=document.getElementById('cdetail'); if(!box) return;
+  const badge=d.active?'<span class="badge act">Active</span>':'<span class="badge ina">Inactive</span>';
+  const cars=d.cars.map(c=>{
+    const name=c.car||'Unknown model';
+    const bits=[c.year,c.color].filter(Boolean).join(' · ');
+    const pct=(typeof c.percent==='number')?`${c.percent}% owned`:'';
+    return `<div class="carrow"><div class="cimg"></div><div class="cinfo"><div class="cn">${esc(name)}</div><div class="cp">${esc(c.plate||'')}${bits?(' · '+esc(bits)):''}</div>${pct?`<div class="cpct">${esc(pct)}</div>`:''}</div><button class="rmbtn" data-plate="${esc(c.plate||'')}">Remove</button></div>`;
+  }).join('');
+  box.innerHTML='';
+  box.appendChild($(`<div>
+    <div class="detail-head"><div><div class="dn">${esc(d.name||d.email)}</div><div class="de">${esc(d.email)}</div></div>${badge}</div>
+    <div class="sectlabel">Cars (${d.cars.length})</div>
+    ${d.cars.length?cars:`<div class="nocars">No cars subscribed. This customer's home screen shows the <b>inactive</b> state — "no cars subscribed, pay the amount to collect your security cheque".</div>`}
+    <div class="sectlabel">Add a car</div>
+    <div class="addbox">
+      <label>Number plate</label>
+      <div class="addrow"><input id="nplate" placeholder="e.g. E 61146" autocomplete="off"><button class="btn" id="addcar">Add</button></div>
+      <div class="preview no" id="preview">Type a plate — the model &amp; ownership % are detected automatically.</div>
+    </div>
+  </div>`));
+  box.querySelectorAll('.rmbtn').forEach(b=>b.onclick=()=>removeCar(d.email,b.dataset.plate));
+  const inp=document.getElementById('nplate'), prev=document.getElementById('preview'), add=document.getElementById('addcar');
+  let t=null;
+  inp.oninput=()=>{ clearTimeout(t); const val=inp.value.trim(); if(!val){ prev.className='preview no'; prev.textContent='Type a plate — the model & ownership % are detected automatically.'; return; } t=setTimeout(()=>lookupPlate(val,prev),350); };
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add.click(); } });
+  add.onclick=()=>addCar(d.email,inp.value.trim());
+}
+async function lookupPlate(plate,prev){
+  try{ const r=await api('/api/admin/lookup?plate='+encodeURIComponent(plate));
+    if(r.found&&r.vehicle){ const v=r.vehicle; const bits=[v.year,v.color].filter(Boolean).join(' · '); const pct=(typeof v.percent==='number')?` · ${v.percent}% owned`:''; prev.className='preview ok'; prev.innerHTML='✓ '+esc(v.car)+(bits?(' · '+esc(bits)):'')+esc(pct); }
+    else { prev.className='preview no'; prev.textContent='Not found in the fleet — it will be added with the plate only (no model info).'; }
+  }catch(e){ prev.className='preview no'; prev.textContent=''; }
+}
+async function addCar(email,plate){
+  if(!plate) return;
+  try{ const d=await api('/api/admin/customers/'+encodeURIComponent(email)+'/cars',{method:'POST',body:JSON.stringify({plate})}); CUST_DETAIL=d; renderDetail(d); }
+  catch(e){ alert((e&&e.error)||'Could not add the car.'); }
+}
+async function removeCar(email,plate){
+  if(!confirm('Remove this car from '+email+'?')) return;
+  try{ const d=await api('/api/admin/customers/'+encodeURIComponent(email)+'/cars/remove',{method:'POST',body:JSON.stringify({plate})}); CUST_DETAIL=d; renderDetail(d); }
+  catch(e){ alert((e&&e.error)||'Could not remove the car.'); }
 }
 
 // ---------- BOOT ----------

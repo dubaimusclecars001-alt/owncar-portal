@@ -330,7 +330,12 @@ async function viewHome(){
   const barPct= typeof v.percent==='number' ? v.percent : 0;
   const paidLabel= v.months ? `${v.months} MONTHS PAID` : `${barPct}% OWNED`;
   const leftLabel= `${Math.max(0,100-barPct)}% LEFT`;
-  const contract=`<div class="card contract">
+  const isInactive = me.active===false;
+  const contract = isInactive ? `<div class="card contract" style="border-color:rgba(224,164,74,0.34);background:radial-gradient(420px 200px at 115% -30%,rgba(224,164,74,0.12),rgba(0,0,0,0) 62%),var(--surface)">
+    <div class="crow"><div class="cimg" style="opacity:.45"></div><div><div class="glabel" style="color:var(--muted2)">Subscription</div><div class="cname">No active subscription</div><div class="csub">No cars subscribed</div></div></div>
+    <div style="font-size:13.5px;color:var(--muted);line-height:1.55">You currently have no cars subscribed. Please settle any outstanding amount to collect your <b style="color:var(--text)">security cheque</b>.</div>
+    <button class="btn btn-primary" id="helpina" style="height:46px;margin-top:18px;font-size:14px">Contact us on WhatsApp</button>
+  </div>` : `<div class="card contract">
     <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
     <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${barPct}%</span></div>
     <div class="track"><div class="fill" style="width:${barPct}%"></div></div>
@@ -354,6 +359,7 @@ async function viewHome(){
     <div style="height:18px"></div>${contract}${overCard}${qa}`);
   const si=document.getElementById('seeinv'); if(si) si.onclick=()=>{ PAYTAB='invoices'; go('payments'); };
   const ac=document.getElementById('allcars'); if(ac) ac.onclick=showCars;
+  const hi=document.getElementById('helpina'); if(hi) hi.onclick=()=>window.open(WA,'_blank');
   app.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.act;
     if(a==='service') go('service');

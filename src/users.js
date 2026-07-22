@@ -31,6 +31,20 @@ export async function getUser(email) {
   return loadFile()[e] || null;
 }
 
+// Lists every client who has registered a password (email + when set).
+// Used by the admin "Customers" area. Identity/name still come from Zoho.
+export async function listUsers() {
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?select=email,updated&order=updated.desc`, { headers: h() });
+    if (!res.ok) throw new Error("Supabase listUsers " + res.status + ": " + (await res.text().catch(() => "")));
+    return await res.json();
+  }
+  const users = loadFile();
+  return Object.keys(users)
+    .map((email) => ({ email, updated: (users[email] && users[email].updated) || null }))
+    .sort((a, b) => (b.updated || "").localeCompare(a.updated || ""));
+}
+
 export async function setUserPassword(email, password) {
   const e = (email || "").toLowerCase();
   const salt = crypto.randomBytes(16).toString("hex");

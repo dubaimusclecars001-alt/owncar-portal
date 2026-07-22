@@ -130,7 +130,17 @@
   .stmt-cell .v{font-size:14.5px;font-weight:700;margin-top:5px;letter-spacing:-.3px;}
   .stmt-cell .v.g{color:var(--green);}
   .ledger .row{margin-bottom:10px;}
-  .drange{display:flex;gap:10px;margin:2px 0 6px;} .dfield{flex:1;min-width:0;}
+  /* From / Till date fields — whole card is tappable, opens the native picker */
+  .drange{display:flex;gap:10px;margin:2px 0 8px;}
+  .datefield{position:relative;flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 14px;cursor:pointer;transition:border-color .15s,background .15s;overflow:hidden;}
+  .datefield:active{border-color:var(--accent);}
+  .datefield.set{border-color:rgba(212,175,55,0.42);background:var(--accent-soft);}
+  .df-top{display:flex;align-items:center;gap:6px;}
+  .df-top svg{width:13px;height:13px;color:var(--accent);}
+  .df-lab{font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);}
+  .df-val{font-size:16px;font-weight:700;margin-top:6px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .df-val.empty{color:var(--muted2);font-weight:500;}
+  .datefield input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;padding:0;margin:0;pointer-events:none;}
 
   /* booking */
   .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px;}
@@ -186,7 +196,8 @@ const IC={
   clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>',
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 11l8-6 8 6v9H4z"/></svg>',
   list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>',
-  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>'
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>'
 };
 function ensureGload(){
   if(!window._glInit){ window._glInit=1; window._glN=0;
@@ -424,8 +435,16 @@ async function viewStatement(){
       ${chip('all','All')}${chip('month','This month')}${chip('3m','Last 3 months')}${chip('year','This year')}
     </div>
     <div class="drange">
-      <div class="dfield"><label>From</label><input type="date" id="from" max="${STMT_RANGE.to||''}" value="${STMT_RANGE.from||''}"></div>
-      <div class="dfield"><label>Till</label><input type="date" id="to" min="${STMT_RANGE.from||''}" value="${STMT_RANGE.to||''}"></div>
+      <div class="datefield${STMT_RANGE.from?' set':''}" id="ff">
+        <div class="df-top">${IC.cal}<span class="df-lab">From</span></div>
+        <div class="df-val${STMT_RANGE.from?'':' empty'}">${STMT_RANGE.from?dmy(STMT_RANGE.from):'Any date'}</div>
+        <input type="date" id="from" max="${STMT_RANGE.to||''}" value="${STMT_RANGE.from||''}">
+      </div>
+      <div class="datefield${STMT_RANGE.to?' set':''}" id="ft">
+        <div class="df-top">${IC.cal}<span class="df-lab">Till</span></div>
+        <div class="df-val${STMT_RANGE.to?'':' empty'}">${STMT_RANGE.to?dmy(STMT_RANGE.to):'Any date'}</div>
+        <input type="date" id="to" min="${STMT_RANGE.from||''}" value="${STMT_RANGE.to||''}">
+      </div>
     </div>
     ${hasRange?'<div style="text-align:right;margin:0 2px 14px"><a id="clr" style="font-size:12px;cursor:pointer">Clear · show all</a></div>':'<div style="height:12px"></div>'}
     <div class="summary">
@@ -439,8 +458,12 @@ async function viewStatement(){
     <div class="ledger">${entries.length?led:'<div class="loading">No transactions in this period.</div>'}</div>`,{title:'Statement',back:true});
   const applyRange=(from,to)=>{ if(from&&to&&to<from){ const t=from; from=to; to=t; } STMT_RANGE={from:from||'',to:to||''}; go('statement'); };
   app.querySelectorAll('#stchips .chip').forEach(b=>b.onclick=()=>{ STMT_RANGE=stmtPreset(b.dataset.k); go('statement'); });
-  app.querySelector('#from').onchange=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
-  app.querySelector('#to').onchange=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
+  const onDate=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
+  [['ff','from'],['ft','to']].forEach(([fid,iid])=>{
+    const field=document.getElementById(fid), input=document.getElementById(iid);
+    field.onclick=()=>{ try{ input.showPicker(); }catch(e){ input.focus(); } };
+    input.onchange=onDate;
+  });
   const clr=document.getElementById('clr'); if(clr) clr.onclick=()=>{ STMT_RANGE={from:'',to:''}; go('statement'); };
   const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf'+q,'Statement.pdf');
 }

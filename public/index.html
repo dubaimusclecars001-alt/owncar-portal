@@ -140,7 +140,10 @@
   .df-lab{font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);}
   .df-val{font-size:16px;font-weight:700;margin-top:6px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .df-val.empty{color:var(--muted2);font-weight:500;}
-  .datefield input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;padding:0;margin:0;pointer-events:none;}
+  /* the real date input sits transparent ON TOP so a tap opens the native
+     picker directly (works on iOS/Android); the card text shows through it */
+  .datefield .df-top,.datefield .df-val{pointer-events:none;}
+  .datefield input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;margin:0;padding:0;background:transparent;cursor:pointer;font-size:16px;}
 
   /* booking */
   .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px;}
@@ -466,10 +469,12 @@ async function viewStatement(){
   const applyRange=(from,to)=>{ if(from&&to&&to<from){ const t=from; from=to; to=t; } STMT_RANGE={from:from||'',to:to||''}; go('statement'); };
   app.querySelectorAll('#stchips .chip').forEach(b=>b.onclick=()=>{ STMT_RANGE=stmtPreset(b.dataset.k); go('statement'); });
   const onDate=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
-  [['ff','from'],['ft','to']].forEach(([fid,iid])=>{
-    const field=document.getElementById(fid), input=document.getElementById(iid);
-    field.onclick=()=>{ try{ input.showPicker(); }catch(e){ input.focus(); } };
+  ['from','to'].forEach(iid=>{
+    const input=document.getElementById(iid);
     input.onchange=onDate;
+    // On phones, tapping the (transparent) native input opens the OS date picker
+    // on its own. On desktop, nudge the calendar open with showPicker().
+    input.onclick=()=>{ try{ if(input.showPicker) input.showPicker(); }catch(e){} };
   });
   const clr=document.getElementById('clr'); if(clr) clr.onclick=()=>{ STMT_RANGE={from:'',to:''}; go('statement'); };
   const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf'+q,'Statement.pdf');

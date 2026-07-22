@@ -119,8 +119,17 @@
   .row.tap{cursor:pointer;transition:.15s;} .row.tap:active{border-color:var(--accent);background:var(--surface2);}
   .dl{display:inline-flex;align-items:center;gap:3px;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--accent);font-weight:600;letter-spacing:.5px;margin-left:7px;border:1px solid rgba(212,175,55,0.4);padding:2px 6px;border-radius:7px;vertical-align:middle;white-space:nowrap;}
 
-  .summary{border-radius:18px;padding:18px;margin-bottom:16px;background:radial-gradient(320px 150px at 110% -30%,rgba(212,175,55,0.16),rgba(212,175,55,0) 60%),linear-gradient(160deg,#1a1712,#141416);border:1px solid rgba(212,175,55,0.28);}
-  .summary .sv{font-size:28px;font-weight:800;letter-spacing:-1px;margin-top:6px;}
+  .summary{border-radius:20px;padding:20px;margin-bottom:16px;background:radial-gradient(320px 150px at 110% -30%,rgba(212,175,55,0.16),rgba(212,175,55,0) 60%),linear-gradient(160deg,#1a1712,#141416);border:1px solid rgba(212,175,55,0.28);}
+  .summary .sv{font-size:32px;font-weight:800;letter-spacing:-1.2px;margin-top:6px;}
+  .summary .sv.due{color:#ffb4b4;} .summary .sv.ok{color:#7fe0b4;}
+  .stmt-period{font-size:11.5px;color:var(--muted);margin-top:8px;}
+  .stmt-grid{display:grid;gap:10px;margin-top:16px;}
+  .stmt-grid.g2{grid-template-columns:1fr 1fr;} .stmt-grid.g3{grid-template-columns:1fr 1fr 1fr;}
+  .stmt-cell{background:rgba(0,0,0,0.24);border:1px solid var(--line);border-radius:12px;padding:10px 11px;}
+  .stmt-cell .k{font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:1px;color:var(--muted2);text-transform:uppercase;}
+  .stmt-cell .v{font-size:14.5px;font-weight:700;margin-top:5px;letter-spacing:-.3px;}
+  .stmt-cell .v.g{color:var(--green);}
+  .ledger .row{margin-bottom:10px;}
   .drange{display:flex;gap:10px;margin:2px 0 6px;} .dfield{flex:1;min-width:0;}
 
   /* booking */
@@ -371,30 +380,67 @@ async function viewHome(){
 
 // ---------- STATEMENT (from Zoho) ----------
 let STMT_RANGE={from:'',to:''};
+const dubaiNow=()=>new Date(Date.now()+4*3600*1000);
+// Quick-range presets, computed in Dubai time so they match the customer's day.
+function stmtPreset(kind){
+  const now=dubaiNow(), y=now.getUTCFullYear(), m=now.getUTCMonth();
+  const iso=(dt)=>dt.toISOString().slice(0,10), today=iso(now);
+  if(kind==='month') return {from:`${y}-${String(m+1).padStart(2,'0')}-01`,to:today};
+  if(kind==='3m') return {from:iso(new Date(Date.UTC(y,m-2,1))),to:today};
+  if(kind==='year') return {from:`${y}-01-01`,to:today};
+  return {from:'',to:''}; // all
+}
+function activeStmtKind(){
+  const r=STMT_RANGE;
+  if(!r.from&&!r.to) return 'all';
+  for(const k of ['month','3m','year']){ const p=stmtPreset(k); if(p.from===r.from&&p.to===r.to) return k; }
+  return 'custom';
+}
+function stmtPeriodLabel(){
+  const {from,to}=STMT_RANGE;
+  if(!from&&!to) return 'All transactions';
+  if(from&&to) return dmy(from)+' – '+dmy(to);
+  return from?('Since '+dmy(from)):('Up to '+dmy(to));
+}
 async function viewStatement(){
   shell('<div class="loading">Loading…</div>',{title:'Statement',back:true});
   const hasRange=!!(STMT_RANGE.from||STMT_RANGE.to);
   const q=hasRange?('?from='+encodeURIComponent(STMT_RANGE.from||'')+'&to='+encodeURIComponent(STMT_RANGE.to||'')):'';
   const {entries,summary}=await api('/api/statement'+q);
-  const led=entries.map(e=>`<div class="row" style="margin-bottom:10px"><div class="ic" style="color:${e.credit?'var(--green)':'var(--accent)'}">${e.credit?IC.check:IC.doc}</div>
+  const due=Number(summary.closing)>0.005;
+  const active=activeStmtKind();
+  const chip=(k,l)=>`<button class="chip ${active===k?'on':''}" data-k="${k}">${l}</button>`;
+  const showOpening=!!STMT_RANGE.from && Math.abs(Number(summary.opening||0))>0.005;
+  const cells=[
+    showOpening?`<div class="stmt-cell"><div class="k">Opening</div><div class="v">AED ${fmt(summary.opening)}</div></div>`:'',
+    `<div class="stmt-cell"><div class="k">Invoiced</div><div class="v">AED ${fmt(summary.invoiced)}</div></div>`,
+    `<div class="stmt-cell"><div class="k">Paid</div><div class="v g">AED ${fmt(summary.paid)}</div></div>`,
+  ].filter(Boolean).join('');
+  const led=entries.map(e=>`<div class="row"><div class="ic" style="color:${e.credit?'var(--green)':'var(--accent)'}">${e.credit?IC.check:IC.doc}</div>
     <div class="m"><div class="r1">${e.label}</div><div class="r2">${dmy(e.date)}</div></div>
     <div class="r"><div class="amt2" style="${e.credit?'color:var(--green)':''}">${e.credit?'− AED '+fmt(e.credit):'AED '+fmt(e.debit)}</div></div></div>`).join('');
   shell(`
+    <div class="chips" id="stchips" style="margin-bottom:12px">
+      ${chip('all','All')}${chip('month','This month')}${chip('3m','Last 3 months')}${chip('year','This year')}
+    </div>
     <div class="drange">
-      <div class="dfield"><label>From</label><input type="date" id="from" value="${STMT_RANGE.from||''}"></div>
-      <div class="dfield"><label>Till</label><input type="date" id="to" value="${STMT_RANGE.to||''}"></div>
+      <div class="dfield"><label>From</label><input type="date" id="from" max="${STMT_RANGE.to||''}" value="${STMT_RANGE.from||''}"></div>
+      <div class="dfield"><label>Till</label><input type="date" id="to" min="${STMT_RANGE.from||''}" value="${STMT_RANGE.to||''}"></div>
     </div>
-    ${hasRange?'<div style="text-align:right;margin:2px 2px 12px"><a id="clr" style="font-size:12px;cursor:pointer">Clear · show all</a></div>':'<div style="height:10px"></div>'}
+    ${hasRange?'<div style="text-align:right;margin:0 2px 14px"><a id="clr" style="font-size:12px;cursor:pointer">Clear · show all</a></div>':'<div style="height:12px"></div>'}
     <div class="summary">
-      <div class="glabel">Closing balance (due)</div>
-      <div class="sv">AED ${fmt(summary.closing)}</div>
-      <div class="glabel mut" style="margin-top:10px">Invoiced AED ${fmt(summary.invoiced)} · Paid AED ${fmt(summary.paid)}</div>
+      <div class="glabel">Closing balance${due?' · due':''}</div>
+      <div class="sv ${due?'due':'ok'}">AED ${fmt(summary.closing)}</div>
+      <div class="stmt-period">${stmtPeriodLabel()}</div>
+      <div class="stmt-grid ${showOpening?'g3':'g2'}">${cells}</div>
     </div>
-    <button class="btn btn-primary" id="dlstmt" style="margin-bottom:18px">Download statement (PDF)</button>
-    <div class="glabel mut" style="margin:4px 2px 12px">Transactions</div>
-    ${entries.length?led:'<div class="loading">No transactions in this range.</div>'}`,{title:'Statement',back:true});
-  const reload=()=>{ STMT_RANGE.from=app.querySelector('#from').value; STMT_RANGE.to=app.querySelector('#to').value; go('statement'); };
-  app.querySelector('#from').onchange=reload; app.querySelector('#to').onchange=reload;
+    <button class="btn btn-ghost" id="dlstmt" style="height:46px;margin-bottom:20px">↓&nbsp; Download statement (PDF)</button>
+    <div class="sec-h" style="margin:2px 2px 12px"><span class="glabel">Transactions</span><span class="glabel mut">${entries.length} ${entries.length===1?'entry':'entries'}</span></div>
+    <div class="ledger">${entries.length?led:'<div class="loading">No transactions in this period.</div>'}</div>`,{title:'Statement',back:true});
+  const applyRange=(from,to)=>{ if(from&&to&&to<from){ const t=from; from=to; to=t; } STMT_RANGE={from:from||'',to:to||''}; go('statement'); };
+  app.querySelectorAll('#stchips .chip').forEach(b=>b.onclick=()=>{ STMT_RANGE=stmtPreset(b.dataset.k); go('statement'); });
+  app.querySelector('#from').onchange=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
+  app.querySelector('#to').onchange=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
   const clr=document.getElementById('clr'); if(clr) clr.onclick=()=>{ STMT_RANGE={from:'',to:''}; go('statement'); };
   const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf'+q,'Statement.pdf');
 }

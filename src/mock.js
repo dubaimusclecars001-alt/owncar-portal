@@ -20,11 +20,11 @@ export const mockCustomers = [
 ];
 
 export const mockInvoices = [
-  { invoice_id: "inv_1058", contact_id: "cust_1", invoice_number: "INV-1058", date: "2026-07-12", due_date: "2026-07-22", total: 2750, balance: 2750, status: "overdue" },
-  { invoice_id: "inv_1051", contact_id: "cust_1", invoice_number: "INV-1051", date: "2026-07-01", due_date: "2026-07-11", total: 1500, balance: 1500, status: "unpaid" },
-  { invoice_id: "inv_1042", contact_id: "cust_1", invoice_number: "INV-1042", date: "2026-06-20", due_date: "2026-06-30", total: 1500, balance: 0, status: "paid" },
-  { invoice_id: "inv_1033", contact_id: "cust_1", invoice_number: "INV-1033", date: "2026-06-05", due_date: "2026-06-15", total: 1500, balance: 0, status: "paid" },
-  { invoice_id: "inv_2001", contact_id: "cust_2", invoice_number: "INV-2001", date: "2026-07-08", due_date: "2026-07-18", total: 3200, balance: 3200, status: "unpaid" },
+  { invoice_id: "inv_1058", contact_id: "cust_1", invoice_number: "INV-1058", date: "2026-07-12", due_date: "2026-07-22", total: 2750, balance: 2750, status: "overdue", items: "Salik toll top-up" },
+  { invoice_id: "inv_1051", contact_id: "cust_1", invoice_number: "INV-1051", date: "2026-07-01", due_date: "2026-07-11", total: 1500, balance: 1500, status: "unpaid", items: "Traffic fine - speeding" },
+  { invoice_id: "inv_1042", contact_id: "cust_1", invoice_number: "INV-1042", date: "2026-06-20", due_date: "2026-06-30", total: 1500, balance: 0, status: "paid", items: "Monthly rent - July" },
+  { invoice_id: "inv_1033", contact_id: "cust_1", invoice_number: "INV-1033", date: "2026-06-05", due_date: "2026-06-15", total: 1500, balance: 0, status: "paid", items: "Monthly rent - June" },
+  { invoice_id: "inv_2001", contact_id: "cust_2", invoice_number: "INV-2001", date: "2026-07-08", due_date: "2026-07-18", total: 3200, balance: 3200, status: "unpaid", items: "Monthly rent" },
 ];
 
 export const mockPayments = [

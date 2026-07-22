@@ -4,7 +4,7 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, USE_MOCK } from "./src/zoho.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword } from "./src/users.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
@@ -159,7 +159,7 @@ app.get("/api/vehicles", requireAuth, async (req, res) => {
 app.get("/api/invoices", requireAuth, async (req, res) => {
   try {
     const c = await currentCustomer(req);
-    const invoices = await getInvoices(c.contact_id);
+    const invoices = req.query.typed ? await getInvoicesTyped(c.contact_id) : await getInvoices(c.contact_id);
     res.json({ invoices });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load invoices." }); }
 });

@@ -358,7 +358,7 @@ async function viewHome(){
     const a=b.dataset.act;
     if(a==='service') go('service');
     else if(a==='statement') go('statement');
-    else if(a==='contract'){ PAYTAB='timeline'; go('payments'); }
+    else if(a==='contract'){ PAYTAB='invoices'; go('payments'); }
     else if(a==='help') window.open(WA,'_blank');
   });
 }
@@ -394,41 +394,29 @@ async function viewStatement(){
 }
 
 // ---------- PAYMENTS (timeline / invoices / receipts) ----------
-let PAYTAB='timeline';
+let PAYTAB='invoices';
 async function viewPayments(){
   shell('<div class="loading">Loading…</div>',{title:'Payments'});
   const seg=`<div class="seg" id="seg">
-    <button data-t="timeline" class="${PAYTAB==='timeline'?'on':''}">Timeline</button>
     <button data-t="invoices" class="${PAYTAB==='invoices'?'on':''}">Invoices</button>
     <button data-t="receipts" class="${PAYTAB==='receipts'?'on':''}">Receipts</button></div>`;
   let content='';
-  if(PAYTAB==='timeline'){
-    const {invoices}=await api('/api/invoices');
-    invoices.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-    const dueId=(invoices.find(i=>Number(i.balance)>0)||{}).invoice_id;
-    const rows=invoices.map((i,idx)=>{
-      const isPaid=Number(i.balance)<=0; const isDue=i.invoice_id===dueId;
-      const st=isPaid?'paid':isDue?'due':'sched';
-      const dd=daysUntil(i.due_date);
-      const lbl=isPaid?'Paid':isDue?(dd!=null&&dd<0?Math.abs(dd)+' days overdue':dd!=null?'Due in '+Math.max(dd,0)+' days':'Due now'):'Scheduled';
-      const ico=isPaid?IC.check:isDue?IC.clock:(idx+1);
-      return `<div class="tl-row ${isDue?'due':''} tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}">
-        <div class="tl-ic ${st}">${ico}</div>
-        <div class="tl-m"><div class="tl-t">Month ${idx+1} · ${dmy(i.date)}</div><div class="glabel mut tl-s">${lbl}</div></div>
-        <div class="tl-amt">AED ${fmt(i.total)}</div></div>`;
-    }).join('');
-    content=`<div class="sec-h" style="margin:2px 2px 14px"><span class="glabel">Monthly timeline</span><a id="export" style="cursor:pointer;font-size:12px">Export →</a></div>
-      ${rows||'<div class="loading">No payments yet.</div>'}
-      <div class="muted center" style="font-size:11px;margin-top:6px">Tap any month to download its invoice PDF</div>`;
-  } else if(PAYTAB==='invoices'){
-    const {invoices}=await api('/api/invoices');
+  if(PAYTAB==='invoices'){
+    const {invoices}=await api('/api/invoices?typed=1');
+    // Filter chips — only for the types this customer actually has.
+    const ORDER=['Long-term rent','Salik','Fine','Service','Insurance','Registration','Fuel','Other'];
+    const present=[...new Set(invoices.map(i=>i.type||'Other'))].sort((a,b)=>ORDER.indexOf(a)-ORDER.indexOf(b));
+    const chips=(invoices.length && present.length>1)
+      ? `<div class="chips" id="invf"><button class="chip on" data-f="all">All</button>${present.map(t=>`<button class="chip" data-f="${t}">${t}</button>`).join('')}</div>`
+      : '';
     const rows=invoices.map(i=>{
       const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
-      return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}"><div class="ic">${IC.doc}</div>
-        <div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">Issued ${dmy(i.date)} · Due ${dmy(i.due_date)}</div></div>
+      const ty=i.type||'Other';
+      return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}" data-type="${ty}"><div class="ic">${IC.doc}</div>
+        <div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">${ty} · Issued ${dmy(i.date)}</div></div>
         <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${st==='paid'?'Paid':st==='overdue'?'Overdue':'Due'}</span></div></div>`;
     }).join('');
-    content=rows||'<div class="loading">No invoices yet.</div>';
+    content=chips+(rows||'<div class="loading">No invoices yet.</div>')+`<div class="loading" id="invfempty" style="display:none">No invoices of this type.</div>`;
   } else {
     const {payments}=await api('/api/receipts');
     const rows=payments.map(p=>`<div class="row tap" data-rcpt="${p.payment_id}" data-num="${p.payment_number}"><div class="ic" style="color:var(--green)">${IC.check}</div>
@@ -438,7 +426,13 @@ async function viewPayments(){
   }
   shell(seg+content,{title:'Payments'});
   app.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{ PAYTAB=b.dataset.t; go('payments'); });
-  const ex=document.getElementById('export'); if(ex) ex.onclick=()=>downloadFile('/api/statement/pdf','Statement.pdf');
+  const invf=document.getElementById('invf');
+  if(invf) invf.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+    invf.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    const f=b.dataset.f; let shown=0;
+    app.querySelectorAll('.row[data-type]').forEach(r=>{ const m=(f==='all'||r.dataset.type===f); r.style.display=m?'':'none'; if(m) shown++; });
+    const emp=document.getElementById('invfempty'); if(emp) emp.style.display=shown?'none':'block';
+  });
   app.querySelectorAll('.tap[data-inv]').forEach(r=>r.onclick=()=>downloadFile('/api/invoices/'+r.dataset.inv+'/pdf', r.dataset.num+'.pdf'));
   app.querySelectorAll('.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
 }

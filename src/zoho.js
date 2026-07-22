@@ -175,6 +175,70 @@ export async function getInvoices(contactId) {
   }));
 }
 
+// ---- invoice type classification (Salik / Fine / Rent / ...) ----
+// Rules are checked in order; the first match wins. Keywords are matched
+// against all of the invoice's text (line items, reference, notes, custom
+// fields), so the type is found wherever the owner wrote it in Zoho.
+const TYPE_RULES = [
+  ["Salik", /salik|\btoll\b|\bdarb\b/i],
+  ["Fine", /\bfine\b|traffic|violation|mukhalafa|black\s*point|penalt/i],
+  ["Long-term rent", /\brent|\blease|monthly|instal?ment|subscription|\bhire\b/i],
+  ["Insurance", /insurance|takaful/i],
+  ["Registration", /registration|mulkiya|renewal|\bregister/i],
+  ["Service", /service|maintenance|repair|\boil\b|tyre|tire|\bwash|detailing/i],
+  ["Fuel", /\bfuel\b|petrol|diesel/i],
+];
+function classifyType(text) {
+  const s = String(text || "");
+  for (const [label, re] of TYPE_RULES) if (re.test(s)) return label;
+  return "Other";
+}
+
+// Runs an async mapper over items with a small concurrency cap (avoids
+// bursting the Zoho rate limit when a customer has many invoices).
+async function mapLimit(items, limit, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += limit) {
+    out.push(...(await Promise.all(items.slice(i, i + limit).map(fn))));
+  }
+  return out;
+}
+
+const _invTypeCache = new Map(); // contactId -> { map: {invoice_id: type}, until }
+
+// Same invoice list as getInvoices, but each invoice gets a { type } label.
+// The type is read from the full invoice (line items etc.) and cached ~15 min
+// per customer, so the fast list endpoints (home, statement) stay untouched.
+export async function getInvoicesTyped(contactId) {
+  const invoices = await getInvoices(contactId);
+  if (USE_MOCK) {
+    return invoices.map((i) => ({
+      ...i,
+      type: i.type || classifyType([i.invoice_number, i.reference_number, i.items, i.description].join(" ")),
+    }));
+  }
+  const now = Date.now();
+  const cached = _invTypeCache.get(contactId);
+  const map = cached && now < cached.until ? cached.map : {};
+  const missing = invoices.filter((i) => !map[i.invoice_id]);
+  if (missing.length) {
+    await mapLimit(missing, 5, async (i) => {
+      try {
+        const full = await booksGet(`invoices/${i.invoice_id}`);
+        const inv = (full && full.invoice) || {};
+        const parts = [inv.invoice_number, inv.reference_number, inv.notes, inv.customer_notes];
+        for (const li of inv.line_items || []) parts.push(li.name, li.description);
+        for (const f of inv.custom_fields || []) parts.push(f.value);
+        map[i.invoice_id] = classifyType(parts.join(" "));
+      } catch (e) {
+        map[i.invoice_id] = map[i.invoice_id] || "Other";
+      }
+    });
+    _invTypeCache.set(contactId, { map, until: now + 15 * 60 * 1000 });
+  }
+  return invoices.map((i) => ({ ...i, type: map[i.invoice_id] || "Other" }));
+}
+
 export async function getPayments(contactId) {
   if (USE_MOCK) return mockPayments.filter((p) => p.contact_id === contactId);
   const data = await booksGet("customerpayments", { customer_id: contactId });

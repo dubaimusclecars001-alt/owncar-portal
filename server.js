@@ -9,6 +9,7 @@ import { normPlate, plateIdentity } from "./src/fleet.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
+import { addNotification, listAllNotifications, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -192,6 +193,21 @@ app.get("/api/receipts", requireAuth, async (req, res) => {
     const payments = await getPayments(c.contact_id);
     res.json({ payments });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not load receipts." }); }
+});
+
+// ---- In-app notifications (customer side) ----
+app.get("/api/notifications", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    const [items, seen] = await Promise.all([listForCustomer(c.email), getSeen(c.email)]);
+    const seenT = seen ? Date.parse(seen) : 0;
+    const unread = items.filter((n) => Date.parse(n.created) > seenT).length;
+    res.json({ notifications: items, unread });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not load notifications." }); }
+});
+app.post("/api/notifications/seen", requireAuth, async (req, res) => {
+  try { const c = await currentCustomer(req); await setSeen(c.email); res.json({ ok: true }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not update notifications." }); }
 });
 
 // ---- PDF downloads (a client can only download their own documents) ----
@@ -429,6 +445,22 @@ app.post("/api/admin/customers/:email/cars/remove", requireAdmin, async (req, re
     await setManagedPlates(email, plates);
     res.json(await customerDetail(email));
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not remove the car." }); }
+});
+
+// ---- Admin: send / list notifications ----
+app.get("/api/admin/notifications", requireAdmin, async (req, res) => {
+  try { res.json({ notifications: await listAllNotifications() }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not load notifications." }); }
+});
+app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
+  try {
+    const title = (req.body.title || "").trim();
+    const body = (req.body.body || "").trim();
+    const email = (req.body.email || "").trim().toLowerCase();
+    if (!title && !body) return res.status(400).json({ error: "Enter a title or a message." });
+    const notification = await addNotification({ email, title, body });
+    res.json({ ok: true, notification });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not send the notification." }); }
 });
 
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));

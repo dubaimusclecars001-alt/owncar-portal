@@ -22,6 +22,10 @@
   .btn.ghost{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line2);font-weight:500;}
   input{width:100%;height:50px;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
   input:focus{border-color:var(--accent);}
+  select{width:100%;height:50px;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:15px;padding:0 12px;outline:none;}
+  select:focus{border-color:var(--accent);}
+  textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:15px;padding:12px 14px;outline:none;font-family:inherit;resize:vertical;}
+  textarea:focus{border-color:var(--accent);}
   label{font-size:12px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;}
 
   /* login */
@@ -138,7 +142,7 @@ function navHeader(active, info){
   return `<div class="top">
     <div class="brand"><div class="mono"><span>O<b>.</b>C</span></div><div><h1>OWN.CAR Admin<small>STAFF DASHBOARD</small></h1></div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div class="vnav"><button data-v="bookings" class="${active==='bookings'?'on':''}">Bookings</button><button data-v="customers" class="${active==='customers'?'on':''}">Customers</button></div>
+      <div class="vnav"><button data-v="bookings" class="${active==='bookings'?'on':''}">Bookings</button><button data-v="customers" class="${active==='customers'?'on':''}">Customers</button><button data-v="notify" class="${active==='notify'?'on':''}">Notify</button></div>
       <span class="pillinfo">${esc(info||('storage: '+STORAGE))}</span>
       <button class="btn ghost" id="logout">Sign out</button>
     </div>
@@ -148,7 +152,7 @@ function wireHeader(){
   const lo=document.getElementById('logout'); if(lo) lo.onclick=async()=>{ await api('/api/admin/logout',{method:'POST'}); renderLogin(); };
   document.querySelectorAll('.vnav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 }
-function go(view){ VIEW=view; if(view==='customers') renderCustomers(); else renderDash(); }
+function go(view){ VIEW=view; if(view==='customers') renderCustomers(); else if(view==='notify') renderNotify(); else renderDash(); }
 
 async function api(path,opts){
   gload.classList.add('show');
@@ -343,6 +347,62 @@ async function removeCar(email,plate){
   if(!confirm('Remove this car from '+email+'?')) return;
   try{ const d=await api('/api/admin/customers/'+encodeURIComponent(email)+'/cars/remove',{method:'POST',body:JSON.stringify({plate})}); CUST_DETAIL=d; renderDetail(d); }
   catch(e){ alert((e&&e.error)||'Could not remove the car.'); }
+}
+
+// ---------- NOTIFY ----------
+async function renderNotify(){
+  app.innerHTML='';
+  app.appendChild($(navHeader('notify','storage: '+STORAGE)));
+  const grid=$(`<div class="grid"></div>`);
+  grid.appendChild($(`<div class="card">
+    <h2>Send a notification</h2>
+    <label>To</label>
+    <select id="naud"><option value="">All customers</option></select>
+    <div style="height:12px"></div>
+    <label>Title</label>
+    <input id="ntitle" placeholder="e.g. Payment reminder" autocomplete="off" maxlength="140">
+    <div style="height:12px"></div>
+    <label>Message</label>
+    <textarea id="nbody" rows="4" placeholder="Write your message…" maxlength="1000"></textarea>
+    <div style="height:14px"></div>
+    <button class="btn" id="nsend" style="width:100%">Send notification</button>
+    <div class="hint" style="margin-top:10px">Customers see this in the app's bell the next time they open it.</div>
+  </div>`));
+  grid.appendChild($(`<div class="card"><h2>Recently sent</h2><div id="nhist"><div class="cust-empty">Loading…</div></div></div>`));
+  app.appendChild(grid);
+  wireHeader();
+  try{ if(!CUSTOMERS.length){ const d=await api('/api/admin/customers'); CUSTOMERS=d.customers||[]; } }catch(e){}
+  const sel=document.getElementById('naud');
+  CUSTOMERS.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=c.email; sel.appendChild(o); });
+  loadNotifHistory();
+  document.getElementById('nsend').onclick=sendNotif;
+}
+async function loadNotifHistory(){
+  const box=document.getElementById('nhist'); if(!box) return;
+  let items=[]; try{ const d=await api('/api/admin/notifications'); items=d.notifications||[]; }catch(e){}
+  if(!items.length){ box.innerHTML='<div class="cust-empty">No notifications sent yet.</div>'; return; }
+  box.innerHTML='';
+  items.forEach(n=>{
+    box.appendChild($(`<div class="bk">
+      <div class="r1"><div><div class="who">${esc(n.title||'(no title)')}</div><div class="car">${n.email?('To: '+esc(n.email)):'To: All customers'}</div></div></div>
+      ${n.body?`<div class="desc">${esc(n.body)}</div>`:''}
+      <div class="meta"><b>Sent:</b> ${fmtDate(n.created)}</div>
+    </div>`));
+  });
+}
+async function sendNotif(){
+  const email=document.getElementById('naud').value;
+  const title=document.getElementById('ntitle').value.trim();
+  const body=document.getElementById('nbody').value.trim();
+  if(!title && !body){ alert('Enter a title or a message.'); return; }
+  if(!confirm('Send this notification to '+(email?email:'ALL customers')+'?')) return;
+  try{
+    await api('/api/admin/notifications',{method:'POST',body:JSON.stringify({email,title,body})});
+    document.getElementById('ntitle').value=''; document.getElementById('nbody').value='';
+    document.getElementById('naud').value='';
+    loadNotifHistory();
+    alert('Notification sent.');
+  }catch(e){ alert((e&&e.error)||'Could not send the notification.'); }
 }
 
 // ---------- BOOT ----------

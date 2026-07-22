@@ -13,6 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { plateIdentity } from "./fleet.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(__dirname, "..", "data", "customer_cars.json");
@@ -35,8 +36,8 @@ function cleanPlates(plates) {
   const out = [], seen = new Set();
   for (const p of plates || []) {
     const v = String(p || "").trim();
-    const k = v.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (v && k && !seen.has(k)) { seen.add(k); out.push(v); }
+    const k = plateIdentity(v);
+    if (v && !seen.has(k)) { seen.add(k); out.push(v); }
   }
   return out;
 }

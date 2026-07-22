@@ -1,7 +1,7 @@
 // Zoho Books data access. Uses sample data when USE_MOCK=true, otherwise
 // talks to the real Zoho Books API with a read-only refresh token.
 import { mockCustomers, mockInvoices, mockPayments } from "./mock.js";
-import { lookupCar, carLabel, colorLabel, normPlate } from "./fleet.js";
+import { lookupCar, carLabel, colorLabel, normPlate, plateIdentity } from "./fleet.js";
 import { liveLookup } from "./fleetlive.js";
 
 const USE_MOCK = (process.env.USE_MOCK || "true").toLowerCase() !== "false";
@@ -109,7 +109,8 @@ export async function getVehicles(contactId) {
     const c = mockCustomers.find((x) => x.contact_id === contactId);
     if (!c) return [];
     const list = (c.plates && c.plates.length) ? c.plates : (c.vehicle && c.vehicle.plate ? [c.vehicle.plate] : []);
-    return list.map(enrichPlate);
+    const seen = new Set();
+    return list.filter((p) => { const k = plateIdentity(p); if (seen.has(k)) return false; seen.add(k); return true; }).map(enrichPlate);
   }
   const cached = _vehCache.get(contactId);
   if (cached && Date.now() < cached.until) return cached.plates.map(enrichPlate);
@@ -122,7 +123,7 @@ export async function getVehicles(contactId) {
       if (plates.length >= 8) break;
       const full = await booksGet(`invoices/${li.invoice_id}`);
       for (const p of extractAllPlates((full && full.invoice) || {})) {
-        const nk = normPlate(p);
+        const nk = plateIdentity(p);
         if (nk && !seen.has(nk)) { seen.add(nk); plates.push(p); }
       }
     }

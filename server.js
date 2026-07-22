@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, enrichPlate, USE_MOCK } from "./src/zoho.js";
-import { normPlate } from "./src/fleet.js";
+import { normPlate, plateIdentity } from "./src/fleet.js";
 import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
@@ -410,7 +410,7 @@ app.post("/api/admin/customers/:email/cars", requireAdmin, async (req, res) => {
     const plate = (req.body.plate || "").trim();
     if (!plate) return res.status(400).json({ error: "Enter a number plate." });
     const plates = await effectivePlates(email);
-    if (!plates.some((p) => normPlate(p) === normPlate(plate))) plates.push(plate);
+    if (!plates.some((p) => plateIdentity(p) === plateIdentity(plate))) plates.push(plate);
     await setManagedPlates(email, plates);
     res.json(await customerDetail(email));
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not add the car." }); }
@@ -421,10 +421,11 @@ app.post("/api/admin/customers/:email/cars", requireAdmin, async (req, res) => {
 app.post("/api/admin/customers/:email/cars/remove", requireAdmin, async (req, res) => {
   try {
     const email = (req.params.email || "").toLowerCase();
-    const target = normPlate(req.body.plate || "");
-    if (!target) return res.status(400).json({ error: "No plate given." });
+    const raw = (req.body.plate || "").trim();
+    if (!raw) return res.status(400).json({ error: "No plate given." });
+    const target = plateIdentity(raw);
     let plates = await effectivePlates(email);
-    plates = plates.filter((p) => normPlate(p) !== target);
+    plates = plates.filter((p) => plateIdentity(p) !== target);
     await setManagedPlates(email, plates);
     res.json(await customerDetail(email));
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not remove the car." }); }

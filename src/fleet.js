@@ -423,6 +423,20 @@ export function normPlate(s) {
   return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+// Order-independent identity for a plate, used to DE-DUPLICATE the same car
+// written different ways — e.g. "65841 AA", "AA 65841" and "DXB AA 65841" are
+// all the same vehicle. Prefers the matched fleet record's code+number (so an
+// emirate prefix or code/number order never matters); otherwise falls back to
+// the longest number run + alphabetically-sorted letters.
+export function plateIdentity(plate) {
+  const rec = staticLookup(plate);
+  if (rec && (rec.code || rec.num)) return "F:" + (rec.code || "") + (rec.num || "");
+  const up = String(plate || "").toUpperCase();
+  const num = (up.match(/\d+/g) || []).sort((a, b) => b.length - a.length)[0] || "";
+  const lett = (up.match(/[A-Z]+/g) || []).join("").split("").sort().join("");
+  return "K:" + num + lett;
+}
+
 // Look up a car by plate against the bundled snapshot.
 export function lookupCar(plate) {
   return staticLookup(plate);

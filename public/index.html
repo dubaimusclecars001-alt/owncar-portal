@@ -79,13 +79,16 @@
   .pamt .cur{font-size:15px;color:var(--muted);font-weight:600;letter-spacing:0;margin-right:7px;vertical-align:7px;}
   .pdue{font-size:14px;color:var(--muted);margin:8px 0 18px;} .pdue b{color:var(--text);font-weight:600;}
 
-  /* quick actions */
-  .qa{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px;}
-  .qi{display:flex;flex-direction:column;align-items:center;gap:9px;background:none;border:none;}
-  .qi .ic{width:100%;aspect-ratio:1;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--accent);}
-  .qi .ic svg{width:22px;height:22px;}
-  .qi .qt{font-size:11.5px;color:var(--muted);}
-  .qi:active .ic{border-color:var(--accent);}
+  /* quick actions — two wide cards (Statement / Help) */
+  .qa2{display:flex;flex-direction:column;gap:12px;margin-top:20px;}
+  .qcard{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;color:inherit;transition:border-color .15s,background .15s;}
+  .qcard:active{border-color:var(--accent);background:var(--surface2);}
+  .qc-ic{width:46px;height:46px;border-radius:13px;flex:0 0 auto;background:var(--accent-soft);border:1px solid rgba(212,175,55,0.25);display:flex;align-items:center;justify-content:center;color:var(--accent);}
+  .qc-ic svg{width:22px;height:22px;}
+  .qc-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .qc-t{font-size:16px;font-weight:700;letter-spacing:-.3px;}
+  .qc-s{font-size:12.5px;color:var(--muted);}
+  .qc-ch{color:var(--muted2);font-size:20px;flex:0 0 auto;}
 
   /* timeline */
   .tl-row{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
@@ -378,11 +381,9 @@ async function viewHome(){
     <div class="pdue">${overdue>0?'Please clear your overdue balance.':'You have no overdue payments.'}</div>
     <button class="btn btn-primary" id="seeinv">See invoices</button>
   </div>`;
-  const qa=`<div class="qa">
-    <button class="qi" data-act="service"><span class="ic">${IC.wrench}</span><span class="qt">Service</span></button>
-    <button class="qi" data-act="statement"><span class="ic">${IC.list}</span><span class="qt">Statement</span></button>
-    <button class="qi" data-act="contract"><span class="ic">${IC.doc}</span><span class="qt">Contract</span></button>
-    <button class="qi" data-act="help"><span class="ic">${IC.chat}</span><span class="qt">Help</span></button>
+  const qa=`<div class="qa2">
+    <button class="qcard" data-act="statement"><span class="qc-ic">${IC.list}</span><span class="qc-m"><span class="qc-t">Statement</span><span class="qc-s">View & download your account</span></span><span class="qc-ch">›</span></button>
+    <button class="qcard" data-act="help"><span class="qc-ic">${IC.chat}</span><span class="qc-m"><span class="qc-t">Help</span><span class="qc-s">Chat with us on WhatsApp</span></span><span class="qc-ch">›</span></button>
   </div>`;
   shell(`<div class="glabel">أهلاً · ${greeting()}</div>
     <div class="greet-h">${(me.name||'').split(' ')[0]||'Welcome'}.</div>
@@ -392,9 +393,7 @@ async function viewHome(){
   const hi=document.getElementById('helpina'); if(hi) hi.onclick=()=>window.open(WA,'_blank');
   app.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.act;
-    if(a==='service') go('service');
-    else if(a==='statement') go('statement');
-    else if(a==='contract'){ PAYTAB='invoices'; go('payments'); }
+    if(a==='statement') go('statement');
     else if(a==='help') window.open(WA,'_blank');
   });
 }

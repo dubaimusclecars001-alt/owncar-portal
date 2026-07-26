@@ -129,6 +129,9 @@
   .bankbox{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:15px;margin:14px 0;}
   .bankrow{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);}
   .bankrow:last-child{border-bottom:none;} .bankrow .k{color:var(--muted);} .bankrow .v{font-weight:600;text-align:right;word-break:break-all;}
+  .copyv{background:none;border:none;color:var(--text);font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;padding:0;justify-content:flex-end;cursor:pointer;}
+  .copyv .msym{font-size:15px;color:var(--accent);flex:0 0 auto;}
+  .copyv:active{color:var(--accent);}
   .uploadtile{display:block;border:1.5px dashed var(--line2);border-radius:15px;background:var(--surface);cursor:pointer;overflow:hidden;margin-bottom:18px;}
   .uploadtile input{display:none;}
   .utinner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;width:100%;min-height:150px;padding:16px;}
@@ -694,6 +697,15 @@ function showConfirmModal(){
 
 // ---------- PAY ----------
 let PAY={amount:'',mode:'',proof:''};
+function copyText(t){
+  try{
+    const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0,t.length);
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+    if(!ok && navigator.clipboard){ navigator.clipboard.writeText(t).catch(()=>{}); }
+    toast('Copied to clipboard');
+  }catch(e){ try{ navigator.clipboard.writeText(t); toast('Copied'); }catch(_){}} }
 function compressImage(file,cb){
   const rd=new FileReader();
   rd.onload=()=>{ const img=new Image(); img.onload=()=>{
@@ -724,9 +736,11 @@ async function viewPay(){
     <div id="banksec" style="${PAY.mode==='bank'?'':'display:none'}">
       <div class="bankbox">
         <div class="glabel mut" style="margin-bottom:8px">Transfer to</div>
-        <div class="bankrow"><span class="k">Account name</span><span class="v">Muscle Cars Rent A Car LLC</span></div>
-        <div class="bankrow"><span class="k">Bank</span><span class="v">—</span></div>
-        <div class="bankrow"><span class="k">IBAN</span><span class="v">—</span></div>
+        <div class="bankrow"><span class="k">Account title</span><span class="v">Muscle Cars Rent A Car</span></div>
+        <div class="bankrow"><span class="k">Bank</span><span class="v">Abu Dhabi Commercial Bank</span></div>
+        <div class="bankrow"><span class="k">IBAN</span><button class="v copyv" data-copy="AE280030012811523920001">AE28 0030 0128 1152 3920 001 <span class="msym">content_copy</span></button></div>
+        <div class="bankrow"><span class="k">Account no.</span><button class="v copyv" data-copy="12811523920001">12811523920001 <span class="msym">content_copy</span></button></div>
+        <div class="bankrow"><span class="k">SWIFT / BIC</span><span class="v">ADCBAEAA</span></div>
       </div>
       <label>Upload transfer proof</label>
       <label class="uploadtile" id="uptile"><input type="file" accept="image/*" id="proffile"><div class="utinner" id="utinner">${proofView}</div></label>
@@ -741,6 +755,7 @@ async function viewPay(){
     b.classList.add('on'); const ck=b.querySelector('.chk'); if(ck) ck.innerHTML='<span class="msym">check</span>';
     document.getElementById('banksec').style.display = PAY.mode==='bank'?'':'none';
   });
+  app.querySelectorAll('.copyv').forEach(b=>b.onclick=()=>copyText(b.dataset.copy));
   const pf=document.getElementById('proffile');
   if(pf) pf.onchange=()=>{ const f=pf.files&&pf.files[0]; if(!f) return; compressImage(f,(data)=>{ PAY.proof=data; const ui=document.getElementById('utinner'); if(ui) ui.innerHTML='<img src="'+data+'">'; }); };
   document.getElementById('paysubmit').onclick=async()=>{

@@ -20,7 +20,7 @@
   body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;}
   #app{width:100%;max-width:460px;min-height:100vh;background:
       radial-gradient(620px 320px at 100% -4%,rgba(224,188,74,0.10),rgba(0,0,0,0) 60%),var(--bg2);
-    position:relative;display:flex;flex-direction:column;padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));}
+    position:relative;display:flex;flex-direction:column;padding-bottom:28px;}
   .center{text-align:center;} .muted{color:var(--muted);}
   button{cursor:pointer;font-family:inherit;color:inherit;}
   a{color:var(--accent);text-decoration:none;}
@@ -95,6 +95,19 @@
   .qc-t{font-size:16px;font-weight:700;letter-spacing:-.3px;}
   .qc-s{font-size:12.5px;color:var(--muted);}
   .qc-ch{color:var(--muted2);font-size:20px;flex:0 0 auto;}
+
+  /* account hub — grid of entry cards */
+  .hub{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;}
+  .hubcard{display:flex;flex-direction:column;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;text-align:left;color:inherit;transition:border-color .15s,background .15s;}
+  .hubcard:active{border-color:var(--accent);background:var(--surface2);}
+  .hub-ic{width:44px;height:44px;border-radius:13px;background:var(--accent-soft);border:1px solid rgba(224,188,74,0.22);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px;}
+  .hub-t{font-size:15.5px;font-weight:700;letter-spacing:-.2px;}
+  .hub-s{font-size:12px;color:var(--muted);margin-top:2px;}
+  .notifrow{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 16px;margin-top:12px;color:inherit;}
+  .notifrow:active{border-color:var(--accent);background:var(--surface2);}
+  .notifrow .hub-ic{margin-bottom:0;flex:0 0 auto;}
+  .notifrow .nr-m{flex:1;min-width:0;}
+  .notifrow .nr-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:0 0 auto;}
 
   /* timeline */
   .tl-row{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
@@ -247,6 +260,9 @@ let UNREAD=0, NOTIFS=[];
 let SELECTED_VEHICLE=null; // when set (from "Show all cars"), the home card shows this car
 let booking={service_type:'Full Service',date:null,time:null};
 const WA='https://wa.me/971589966706';
+// true when the portal runs inside the V4 app's Account tab (iframe). When
+// embedded, the V4 tab bar handles leaving, so we hide the back-to-app button.
+const EMBEDDED=(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
 
 // ---------- LOGIN ----------
 let AUTH={email:''};
@@ -254,7 +270,7 @@ function toShop(){ try{ (window.top||window).location.href='/'; }catch(e){ windo
 function loginShell(inner){
   app.innerHTML='';
   app.appendChild($(`<div class="login-wrap">
-    <button class="backapp" id="backapp" style="position:absolute;top:18px;left:18px;z-index:5"><span class="msym">chevron_left</span><span>OWN.CAR</span></button>
+    ${EMBEDDED?'':`<button class="backapp" id="backapp" style="position:absolute;top:18px;left:18px;z-index:5"><span class="msym">chevron_left</span><span>OWN.CAR</span></button>`}
     <div class="login">
     <div class="login-logo">O.C</div>
     <h1>OWN.CAR</h1>${inner}</div></div>`));
@@ -328,10 +344,9 @@ function shell(bodyHtml, opts={}){
     head=`<div class="subhead"><div class="htitle">${opts.title}</div></div>`;
   } else {
     const initial=(ME&&ME.name?ME.name.trim()[0]:'•').toUpperCase();
-    head=`<div class="topbar"><button class="backapp" id="backapp"><span class="msym">chevron_left</span><span>OWN.CAR</span></button><div class="tb-right"><button class="iconbtn" id="bell">${IC.bell}${UNREAD>0?'<span class="dot"></span>':''}</button><button class="avatar" id="avatar">${initial}</button></div></div>`;
+    head=`<div class="topbar">${EMBEDDED?'<div></div>':`<button class="backapp" id="backapp"><span class="msym">chevron_left</span><span>OWN.CAR</span></button>`}<div class="tb-right"><button class="iconbtn" id="bell">${IC.bell}${UNREAD>0?'<span class="dot"></span>':''}</button><button class="avatar" id="avatar">${initial}</button></div></div>`;
   }
   app.appendChild($(`<div>${head}<div class="body">${bodyHtml}</div></div>`));
-  app.appendChild(navBar());
   const b=document.getElementById('back'); if(b) b.onclick=()=>go('home');
   const ba=document.getElementById('backapp'); if(ba) ba.onclick=toShop;
   const bell=document.getElementById('bell'); if(bell) bell.onclick=openNotifications;
@@ -392,20 +407,27 @@ async function viewHome(){
     <div class="pdue">${overdue>0?'Please clear your overdue balance.':'You have no overdue payments.'}</div>
     <button class="btn btn-primary" id="seeinv">See invoices</button>
   </div>`;
-  const qa=`<div class="qa2">
-    <button class="qcard" data-act="statement"><span class="qc-ic">${IC.list}</span><span class="qc-m"><span class="qc-t">Statement</span><span class="qc-s">View & download your account</span></span><span class="qc-ch">›</span></button>
-    <button class="qcard" data-act="help"><span class="qc-ic">${IC.chat}</span><span class="qc-m"><span class="qc-t">Help</span><span class="qc-s">Chat with us on WhatsApp</span></span><span class="qc-ch">›</span></button>
-  </div>`;
+  const hub=`<div class="glabel mut" style="margin:26px 2px 2px">Manage</div>
+  <div class="hub">
+    <button class="hubcard" data-go="statement"><span class="hub-ic msym">receipt_long</span><span class="hub-t">Statement</span><span class="hub-s">Balance &amp; history</span></button>
+    <button class="hubcard" data-go="invoices"><span class="hub-ic msym">description</span><span class="hub-t">Invoices</span><span class="hub-s">View &amp; download</span></button>
+    <button class="hubcard" data-go="receipts"><span class="hub-ic msym">account_balance_wallet</span><span class="hub-t">Receipts</span><span class="hub-s">Your payments</span></button>
+    <button class="hubcard" data-go="service"><span class="hub-ic msym">handyman</span><span class="hub-t">Service</span><span class="hub-s">Book maintenance</span></button>
+  </div>
+  <button class="notifrow" data-go="notifications"><span class="hub-ic msym">notifications</span><span class="nr-m"><span class="hub-t">Notifications</span><span class="hub-s">${UNREAD>0?UNREAD+' unread':"You're all caught up"}</span></span>${UNREAD>0?'<span class="nr-dot"></span>':'<span class="qc-ch">›</span>'}</button>`;
   shell(`<div class="glabel">أهلاً · ${greeting()}</div>
     <div class="greet-h">${(me.name||'').split(' ')[0]||'Welcome'}.</div>
-    <div style="height:18px"></div>${contract}${overCard}${qa}`);
+    <div style="height:18px"></div>${contract}${isInactive?'':overCard}${hub}`);
   const si=document.getElementById('seeinv'); if(si) si.onclick=()=>{ PAYTAB='invoices'; go('payments'); };
   const ac=document.getElementById('allcars'); if(ac) ac.onclick=showCars;
   const hi=document.getElementById('helpina'); if(hi) hi.onclick=()=>window.open(WA,'_blank');
-  app.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
-    const a=b.dataset.act;
-    if(a==='statement') go('statement');
-    else if(a==='help') window.open(WA,'_blank');
+  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.go;
+    if(g==='statement') go('statement');
+    else if(g==='invoices'){ PAYTAB='invoices'; go('payments'); }
+    else if(g==='receipts'){ PAYTAB='receipts'; go('payments'); }
+    else if(g==='service') go('service');
+    else if(g==='notifications') openNotifications();
   });
 }
 
@@ -493,7 +515,7 @@ async function viewStatement(){
 // ---------- PAYMENTS (timeline / invoices / receipts) ----------
 let PAYTAB='invoices';
 async function viewPayments(){
-  shell('<div class="loading">Loading…</div>',{title:'Payments'});
+  shell('<div class="loading">Loading…</div>',{title:'Payments',back:true});
   const seg=`<div class="seg" id="seg">
     <button data-t="invoices" class="${PAYTAB==='invoices'?'on':''}">Invoices</button>
     <button data-t="receipts" class="${PAYTAB==='receipts'?'on':''}">Receipts</button></div>`;
@@ -521,7 +543,7 @@ async function viewPayments(){
       <div class="r"><div class="amt2" style="color:var(--green)">AED ${fmt(p.amount)}</div></div></div>`).join('');
     content=rows||'<div class="loading">No receipts yet.</div>';
   }
-  shell(seg+content,{title:'Payments'});
+  shell(seg+content,{title:'Payments',back:true});
   app.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{ PAYTAB=b.dataset.t; go('payments'); });
   const invf=document.getElementById('invf');
   if(invf) invf.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
@@ -543,8 +565,8 @@ async function viewAccount(){
       <div class="muted" style="font-size:13px;margin-top:3px">${me.email||''}</div>
       ${me.phone?`<div class="muted" style="font-size:13px;margin-top:2px">${me.phone}</div>`:''}
     </div>
-    <button class="btn btn-ghost" id="logout" style="margin-top:16px">Sign out</button>`,{title:'Account'});
-  document.getElementById('logout').onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); };
+    <button class="btn btn-ghost" id="logout" style="margin-top:16px">Sign out</button>`,{title:'Account',back:true});
+  document.getElementById('logout').onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); notifyAuth(); };
 }
 
 // ---------- BOOKING ----------
@@ -650,10 +672,14 @@ async function openNotifications(){
   UNREAD=0; const d=document.querySelector('.iconbtn .dot'); if(d) d.remove();
 }
 
+// Tell the V4 app (parent) our sign-in state changed, so its header can show
+// the customer's avatar (or revert to "Sign in").
+function notifyAuth(){ if(EMBEDDED){ try{ window.parent.postMessage('owncar-auth','*'); }catch(e){} } }
+
 // ---------- BOOT ----------
 async function boot(){
   try{ CFG=await api('/api/config'); }catch(e){}
-  try{ await api('/api/me'); CURRENT='home'; await viewHome(); }
+  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); }
   catch(e){ renderLogin(); }
 }
 boot();

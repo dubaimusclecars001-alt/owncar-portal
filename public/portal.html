@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>OWN.CAR — Client Portal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,600;0,700;0,800;1,800&family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap');
+  :root{
+    --bg:#050505;--bg2:#0A0A0A;--surface:#101012;--surface2:#17171A;--surface3:#202024;
+    --line:#1B1B1B;--line2:#2A2A2A;
+    --text:#F2F2EE;--muted:#9A9A94;--muted2:#6B6B65;
+    --accent:#E0BC4A;--accent-2:#EFD37C;--accent-soft:rgba(224,188,74,0.13);
+    --green:#43B581;--green-soft:rgba(67,181,129,0.16);--red-soft:rgba(225,73,73,0.15);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;font-family:'Hanken Grotesk',system-ui,sans-serif;}
+  .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,monospace;}
+  .arch{font-family:'Archivo',sans-serif;}
+  .msym{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;display:inline-block;-webkit-font-smoothing:antialiased;}
+  body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;}
+  #app{width:100%;max-width:460px;min-height:100vh;background:
+      radial-gradient(620px 320px at 100% -4%,rgba(224,188,74,0.10),rgba(0,0,0,0) 60%),var(--bg2);
+    position:relative;display:flex;flex-direction:column;padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));}
+  .center{text-align:center;} .muted{color:var(--muted);}
+  button{cursor:pointer;font-family:inherit;color:inherit;}
+  a{color:var(--accent);text-decoration:none;}
+  svg{display:block;}
+
+  .glabel{font-family:'Hanken Grotesk',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);}
+  .glabel.mut{color:var(--muted2);}
+  .disp{font-weight:800;letter-spacing:-.6px;}
+
+  .btn{width:100%;height:52px;border:none;border-radius:14px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary{background:var(--accent);color:#0B0B0C;font-weight:700;box-shadow:0 12px 26px -10px rgba(224,188,74,.55);}
+  .btn-ghost{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--line2);font-weight:500;}
+  input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:13px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
+  input:focus,select:focus{border-color:var(--accent);}
+  input[type=date]{color-scheme:dark;padding:0 12px;} input[type=date]::-webkit-calendar-picker-indicator{filter:invert(76%) sepia(38%) saturate(560%) hue-rotate(1deg);cursor:pointer;}
+  textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:13px;color:var(--text);font-size:15px;padding:12px 15px;outline:none;resize:vertical;font-family:inherit;}
+  textarea:focus{border-color:var(--accent);}
+  label{font-size:11px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;font-family:'Hanken Grotesk',sans-serif;text-transform:uppercase;}
+
+  /* top bar (home) + sub header */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 6px;}
+  .tb-right{display:flex;align-items:center;gap:12px;}
+  .iconbtn{width:42px;height:42px;border-radius:13px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);position:relative;}
+  .iconbtn svg{width:19px;height:19px;}
+  .iconbtn .dot{position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .avatar{width:42px;height:42px;border-radius:13px;background:var(--accent);color:#0B0B0C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;border:none;}
+  .subhead{display:flex;align-items:center;gap:12px;padding:18px 20px 8px;}
+  .backbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;}
+  .htitle{font-size:19px;font-weight:700;letter-spacing:-.3px;}
+  /* back-to-app (returns to the V4 shop) */
+  .backapp{display:inline-flex;align-items:center;gap:2px;height:38px;padding:0 13px 0 7px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:12px;font-weight:600;letter-spacing:.2px;}
+  .backapp .msym{font-size:19px;color:var(--accent);}
+  .backapp:active{border-color:var(--accent);background:var(--surface2);}
+
+  .body{flex:1;padding:8px 20px 22px;}
+  .greet-h{font-size:34px;font-weight:800;letter-spacing:-1px;margin-top:2px;}
+  .sec-h{display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px;}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;position:relative;overflow:hidden;}
+  .card + .card{margin-top:16px;}
+
+  /* contract card */
+  .contract{background:radial-gradient(420px 200px at 115% -30%,rgba(224,188,74,0.14),rgba(224,188,74,0) 62%),var(--surface);}
+  .crow{display:flex;gap:15px;align-items:center;margin-bottom:20px;}
+  .cimg{width:74px;height:74px;border-radius:15px;flex:0 0 auto;border:1px solid var(--line2);
+     background:repeating-linear-gradient(135deg,#25252b,#25252b 7px,#1c1c21 7px,#1c1c21 14px);}
+  .cname{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:5px;}
+  .csub{font-size:13px;color:var(--muted);margin-top:1px;}
+  .prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+  .pct{font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:var(--accent);font-weight:600;}
+  .track{height:7px;border-radius:6px;background:var(--surface3);overflow:hidden;}
+  .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+  .prow{display:flex;justify-content:space-between;margin-top:12px;font-family:'Hanken Grotesk',sans-serif;font-size:10px;letter-spacing:1px;color:var(--muted2);}
+  .prow .mid{color:var(--muted);}
+
+  /* next payment card */
+  .pay{border-color:rgba(224,188,74,0.28);background:radial-gradient(380px 200px at 110% -30%,rgba(224,188,74,0.16),rgba(224,188,74,0) 60%),linear-gradient(160deg,#1a1712,#141416);}
+  .phead{display:flex;justify-content:space-between;align-items:flex-start;}
+  .cardicon{width:46px;height:46px;border-radius:13px;background:var(--accent);color:#0B0B0C;display:flex;align-items:center;justify-content:center;}
+  .cardicon svg{width:22px;height:22px;}
+  .pamt{font-size:40px;font-weight:800;letter-spacing:-1.5px;margin-top:14px;}
+  .pamt .cur{font-size:15px;color:var(--muted);font-weight:600;letter-spacing:0;margin-right:7px;vertical-align:7px;}
+  .pdue{font-size:14px;color:var(--muted);margin:8px 0 18px;} .pdue b{color:var(--text);font-weight:600;}
+
+  /* quick actions — two wide cards (Statement / Help) */
+  .qa2{display:flex;flex-direction:column;gap:12px;margin-top:20px;}
+  .qcard{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;color:inherit;transition:border-color .15s,background .15s;}
+  .qcard:active{border-color:var(--accent);background:var(--surface2);}
+  .qc-ic{width:46px;height:46px;border-radius:13px;flex:0 0 auto;background:var(--accent-soft);border:1px solid rgba(224,188,74,0.25);display:flex;align-items:center;justify-content:center;color:var(--accent);}
+  .qc-ic svg{width:22px;height:22px;}
+  .qc-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .qc-t{font-size:16px;font-weight:700;letter-spacing:-.3px;}
+  .qc-s{font-size:12.5px;color:var(--muted);}
+  .qc-ch{color:var(--muted2);font-size:20px;flex:0 0 auto;}
+
+  /* timeline */
+  .tl-row{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
+  .tl-row.due{border-color:rgba(224,188,74,0.5);background:linear-gradient(160deg,#1b1811,#151517);}
+  .tl-ic{width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:14px;}
+  .tl-ic.paid{background:var(--green);color:#06231a;} .tl-ic.paid svg{width:22px;height:22px;stroke:#06231a;}
+  .tl-ic.due{background:var(--accent);color:#0B0B0C;} .tl-ic.due svg{width:22px;height:22px;stroke:#0B0B0C;}
+  .tl-ic.sched{background:var(--surface3);color:var(--muted);border:1px solid var(--line);}
+  .tl-m{flex:1;} .tl-t{font-size:15px;font-weight:700;letter-spacing:-.2px;}
+  .tl-s{margin-top:3px;}
+  .tl-amt{font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;}
+  .tl-row.due .tl-amt{color:var(--text);}
+
+  /* generic rows (invoices / receipts) */
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:4px;margin:2px 0 18px;}
+  .seg button{flex:1;background:none;border:none;color:var(--muted);font-size:13px;padding:9px 0;border-radius:9px;font-weight:500;}
+  .seg button.on{background:var(--surface3);color:var(--text);}
+  .row{display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--line);border-radius:15px;margin-bottom:11px;background:var(--surface);}
+  .row .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--accent);}
+  .row .ic svg{width:19px;height:19px;} .row .m{flex:1;min-width:0;} .row .r{text-align:right;}
+  .r1{font-size:14px;font-weight:600;} .r2{font-size:11px;color:var(--muted);margin-top:3px;}
+  .carpick{display:flex;align-items:center;gap:13px;padding:13px 14px;border:1px solid var(--line);border-radius:15px;margin-bottom:10px;background:var(--surface);width:100%;text-align:left;color:inherit;cursor:pointer;font:inherit;transition:border-color .15s,background .15s;}
+  .carpick .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--accent);}
+  .carpick .ic svg{width:19px;height:19px;} .carpick .m{flex:1;min-width:0;}
+  .carpick .chev{color:var(--muted);font-size:18px;flex:0 0 auto;}
+  .carpick:active{background:var(--surface2);}
+  .carpick.on{border-color:var(--accent);} .carpick.on .chev{color:var(--accent);font-weight:700;}
+  .amt2{font-size:15px;font-weight:700;}
+  .pill{display:inline-block;font-family:'Hanken Grotesk',sans-serif;font-size:9px;letter-spacing:1px;font-weight:600;padding:3px 8px;border-radius:7px;margin-top:5px;text-transform:uppercase;}
+  .pill.paid{background:var(--green-soft);color:#7fe0b4;} .pill.due{background:var(--accent-soft);color:var(--accent-2);} .pill.overdue,.pill.unpaid{background:var(--red-soft);color:#ff8a97;}
+  .row.tap{cursor:pointer;transition:.15s;} .row.tap:active{border-color:var(--accent);background:var(--surface2);}
+  .dl{display:inline-flex;align-items:center;gap:3px;font-family:'Hanken Grotesk',sans-serif;font-size:9px;color:var(--accent);font-weight:600;letter-spacing:.5px;margin-left:7px;border:1px solid rgba(224,188,74,0.4);padding:2px 6px;border-radius:7px;vertical-align:middle;white-space:nowrap;}
+
+  .summary{border-radius:20px;padding:20px;margin-bottom:16px;background:radial-gradient(320px 150px at 110% -30%,rgba(224,188,74,0.16),rgba(224,188,74,0) 60%),linear-gradient(160deg,#1a1712,#141416);border:1px solid rgba(224,188,74,0.28);}
+  .summary .sv{font-size:32px;font-weight:800;letter-spacing:-1.2px;margin-top:6px;}
+  .summary .sv.due{color:#ffb4b4;} .summary .sv.ok{color:#7fe0b4;}
+  .stmt-period{font-size:11.5px;color:var(--muted);margin-top:8px;}
+  .stmt-grid{display:grid;gap:10px;margin-top:16px;}
+  .stmt-grid.g2{grid-template-columns:1fr 1fr;} .stmt-grid.g3{grid-template-columns:1fr 1fr 1fr;}
+  .stmt-cell{background:rgba(0,0,0,0.24);border:1px solid var(--line);border-radius:12px;padding:10px 11px;}
+  .stmt-cell .k{font-family:'Hanken Grotesk',sans-serif;font-size:8.5px;letter-spacing:1px;color:var(--muted2);text-transform:uppercase;}
+  .stmt-cell .v{font-size:14.5px;font-weight:700;margin-top:5px;letter-spacing:-.3px;}
+  .stmt-cell .v.g{color:var(--green);}
+  .ledger .row{margin-bottom:10px;}
+  /* From / Till date fields — whole card is tappable, opens the native picker */
+  .drange{display:flex;gap:10px;margin:2px 0 8px;}
+  .datefield{position:relative;flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 14px;cursor:pointer;transition:border-color .15s,background .15s;overflow:hidden;}
+  .datefield:active{border-color:var(--accent);}
+  .datefield.set{border-color:rgba(224,188,74,0.42);background:var(--accent-soft);}
+  .df-top{display:flex;align-items:center;gap:6px;}
+  .df-top svg{width:13px;height:13px;color:var(--accent);}
+  .df-lab{font-family:'Hanken Grotesk',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);}
+  .df-val{font-size:16px;font-weight:700;margin-top:6px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .df-val.empty{color:var(--muted2);font-weight:500;}
+  /* the real date input sits transparent ON TOP so a tap opens the native
+     picker directly (works on iOS/Android); the card text shows through it */
+  .datefield .df-top,.datefield .df-val{pointer-events:none;}
+  .datefield input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;margin:0;padding:0;background:transparent;cursor:pointer;font-size:16px;}
+
+  /* booking */
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px;}
+  .chip{font-size:12.5px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
+  .chip.on{background:var(--accent-soft);border-color:rgba(224,188,74,0.4);color:#e8cf7f;font-weight:600;}
+  .times{display:flex;gap:10px;margin-bottom:8px;}
+  .tcell{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px 0;text-align:center;background:var(--surface);color:var(--muted);font-size:13px;}
+  .tcell.on{background:var(--accent-soft);border-color:var(--accent);color:#e8cf7f;}
+  .tcell.disabled{opacity:.3;text-decoration:line-through;pointer-events:none;}
+
+  /* bottom nav — V4 tab-bar style */
+  .nav{position:fixed;bottom:0;width:100%;max-width:460px;height:calc(96px + env(safe-area-inset-bottom,0px));background:#0A0A0A;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);align-items:start;padding-top:14px;box-sizing:border-box;z-index:100;}
+  .nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:6px;color:#6B6B65;font-family:'Hanken Grotesk',sans-serif;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;}
+  .nav .navic{display:flex;align-items:center;justify-content:center;}
+  .nav .navic .msym{font-size:23px;color:#6B6B65;transition:color .15s;}
+  .nav button.on{color:var(--accent);}
+  .nav button.on .navic .msym{color:var(--accent);}
+
+  .toast{position:fixed;bottom:98px;left:50%;transform:translateX(-50%);background:rgba(67,181,129,.16);border:1px solid rgba(67,181,129,.45);color:#bff0d6;border-radius:13px;padding:12px 18px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:250;max-width:88%;text-align:center;}
+  .toast.show{opacity:1;}
+  .loading{text-align:center;color:var(--muted);padding:44px 0;font-size:14px;}
+  .modal-ov{position:fixed;inset:0;background:rgba(5,5,7,.72);display:flex;align-items:center;justify-content:center;z-index:300;padding:26px;}
+  .modal-card{background:var(--surface);border:1px solid var(--line2);border-radius:22px;padding:28px 24px;max-width:360px;width:100%;text-align:center;}
+  .rcheck{width:72px;height:72px;border-radius:50%;background:var(--green-soft);border:1px solid rgba(67,181,129,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--green);}
+  .rcheck svg{width:34px;height:34px;}
+  .notif{border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:10px;background:var(--surface2);}
+  .notif-t{font-size:14.5px;font-weight:700;letter-spacing:-.2px;}
+  .notif-b{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.5;white-space:pre-wrap;}
+  .notif-d{font-family:'Hanken Grotesk',sans-serif;font-size:9px;letter-spacing:1px;color:var(--muted2);text-transform:uppercase;margin-top:9px;}
+
+  /* login */
+  .login-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:30px 26px 60px;}
+  .login-logo{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;background:var(--accent);color:#0B0B0C;font-size:15px;font-weight:800;letter-spacing:1px;}
+  .login h1{font-size:27px;font-weight:800;text-align:center;letter-spacing:-.5px;}
+  .login p{font-size:14px;color:var(--muted);text-align:center;margin:8px 0 26px;}
+  .field{margin-bottom:15px;}
+  .err{color:#ff8a97;font-size:13px;margin:4px 2px 0;min-height:16px;}
+  .devnote{font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#e0c98a;background:rgba(224,164,74,0.1);border:1px solid rgba(224,164,74,0.25);border-radius:12px;padding:12px;margin-top:14px;text-align:center;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Loading…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+const $ = (h) => { const t=document.createElement('template'); t.innerHTML=h.trim(); return t.content.firstChild; };
+const app = document.getElementById('app');
+const fmt = (n) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const dmy = (s) => { if(!s) return ''; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+const esc = (s) => String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const IC={
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>',
+  card:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18"/></svg>',
+  wrench:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M15 6.5a4 4 0 0 0-5.2 5.2L4 17.6 6.4 20l5.9-5.8A4 4 0 0 0 17.5 9l-2.2 2.2-2.3-.6-.6-2.3z"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 3h7l5 5v13H6z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 16.5h6"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v11H8.5L4 19.5z"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4 10-10"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 11l8-6 8 6v9H4z"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>'
+};
+function ensureGload(){
+  if(!window._glInit){ window._glInit=1; window._glN=0;
+    var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,5,.55);display:none;align-items:center;justify-content:center;z-index:400}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.22);border-top-color:#E0BC4A;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
+    var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
+  }
+  return document.getElementById('gload');
+}
+async function api(path, opts){
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
+  finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+}
+async function downloadFile(url, filename){
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  try{
+    const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
+    if(!r.ok){ let m='Could not download file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
+    const blob=await r.blob(); const a=document.createElement('a'); const u=URL.createObjectURL(blob);
+    a.href=u; a.download=filename||'document.pdf'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),5000); toast('Downloaded '+(filename||'file'));
+  }catch(e){ toast('Could not download file.'); }
+  finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+}
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+const daysUntil=(s)=>{ if(!s) return null; const d=new Date(s); if(isNaN(d)) return null; return Math.round((d-new Date(new Date().toDateString()))/864e5); };
+
+let ME=null, CFG={mock:true};
+let UNREAD=0, NOTIFS=[];
+let SELECTED_VEHICLE=null; // when set (from "Show all cars"), the home card shows this car
+let booking={service_type:'Full Service',date:null,time:null};
+const WA='https://wa.me/971589966706';
+
+// ---------- LOGIN ----------
+let AUTH={email:''};
+function toShop(){ try{ (window.top||window).location.href='/'; }catch(e){ window.location.href='/'; } }
+function loginShell(inner){
+  app.innerHTML='';
+  app.appendChild($(`<div class="login-wrap">
+    <button class="backapp" id="backapp" style="position:absolute;top:18px;left:18px;z-index:5"><span class="msym">chevron_left</span><span>OWN.CAR</span></button>
+    <div class="login">
+    <div class="login-logo">O.C</div>
+    <h1>OWN.CAR</h1>${inner}</div></div>`));
+  const ba=document.getElementById('backapp'); if(ba) ba.onclick=toShop;
+}
+function renderLogin(){ stepEmail(); }
+function stepEmail(){
+  loginShell(`<p>Sign in to your account</p>
+    <div class="field"><label>Email address</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email" value="${AUTH.email||''}" /></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="go">Continue</button>`);
+  const go=async()=>{
+    const email=app.querySelector('#email').value.trim().toLowerCase(); const err=app.querySelector('#err'); err.textContent='';
+    if(!email){ err.textContent='Please enter your email.'; return; }
+    AUTH.email=email;
+    try{ const r=await api('/api/auth/check',{method:'POST',body:JSON.stringify({email})});
+      if(r.hasPassword) stepPassword(); else { await requestCode(); stepSetPassword(false); }
+    }catch(e){ err.textContent=e.error||'Something went wrong.'; }
+  };
+  app.querySelector('#go').onclick=go;
+  app.querySelector('#email').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+}
+function stepPassword(){
+  loginShell(`<p>Welcome back — enter your password</p>
+    <div class="field"><label>Email</label><input value="${AUTH.email}" disabled /></div>
+    <div class="field"><label>Password</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password" /></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="signin">Sign in</button>
+    <p style="margin-top:16px"><a id="forgot" style="cursor:pointer">Forgot password?</a> · <a id="changeemail" style="color:var(--muted);cursor:pointer">Use a different email</a></p>`);
+  const signin=async()=>{
+    const err=app.querySelector('#err'); err.textContent='';
+    try{ await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:AUTH.email,password:app.querySelector('#pw').value})}); await boot(); }
+    catch(e){ err.textContent=e.error||'Incorrect password.'; }
+  };
+  app.querySelector('#signin').onclick=signin;
+  app.querySelector('#pw').addEventListener('keydown',e=>{ if(e.key==='Enter') signin(); });
+  app.querySelector('#forgot').onclick=async()=>{ await requestCode(); stepSetPassword(true); };
+  app.querySelector('#changeemail').onclick=()=>{ AUTH.email=''; stepEmail(); };
+}
+let DEVCODE='';
+async function requestCode(){
+  try{ const r=await api('/api/auth/send-code',{method:'POST',body:JSON.stringify({email:AUTH.email})}); DEVCODE=r.devCode||''; }
+  catch(e){ DEVCODE=''; }
+}
+function stepSetPassword(isReset){
+  loginShell(`<p>${isReset?'Reset your password':'Let’s set up your account'}</p>
+    <div class="field" style="margin-top:4px"><label>6-digit code</label><input id="code" inputmode="numeric" maxlength="6" placeholder="______" /></div>
+    <div class="field"><label>${isReset?'New password':'Create a password'} (min 8)</label><input id="pw" type="password" placeholder="Choose a password" autocomplete="new-password" /></div>
+    <div class="err" id="err"></div>
+    <button class="btn btn-primary" id="save">${isReset?'Reset &amp; sign in':'Create &amp; sign in'}</button>
+    <p style="margin-top:14px"><a id="resend" style="color:var(--muted);cursor:pointer">Resend code</a></p>
+    ${DEVCODE?`<div class="devnote">Advance mode — your code is <b>${DEVCODE}</b></div>`:''}`);
+  app.querySelector('#save').onclick=async()=>{
+    const err=app.querySelector('#err'); err.textContent='';
+    const code=app.querySelector('#code').value.trim(), pw=app.querySelector('#pw').value;
+    if(pw.length<8){ err.textContent='Password must be at least 8 characters.'; return; }
+    try{ await api('/api/auth/set-password',{method:'POST',body:JSON.stringify({email:AUTH.email,code,password:pw})}); await boot(); }
+    catch(e){ err.textContent=e.error||'Could not set password.'; }
+  };
+  app.querySelector('#resend').onclick=async()=>{ await requestCode(); stepSetPassword(isReset); };
+}
+
+// ---------- SHELL ----------
+let CURRENT='home';
+function shell(bodyHtml, opts={}){
+  app.innerHTML='';
+  let head;
+  if(opts.back){
+    head=`<div class="subhead"><button class="backbtn" id="back">‹</button><div class="htitle">${opts.title||''}</div></div>`;
+  } else if(opts.title){
+    head=`<div class="subhead"><div class="htitle">${opts.title}</div></div>`;
+  } else {
+    const initial=(ME&&ME.name?ME.name.trim()[0]:'•').toUpperCase();
+    head=`<div class="topbar"><button class="backapp" id="backapp"><span class="msym">chevron_left</span><span>OWN.CAR</span></button><div class="tb-right"><button class="iconbtn" id="bell">${IC.bell}${UNREAD>0?'<span class="dot"></span>':''}</button><button class="avatar" id="avatar">${initial}</button></div></div>`;
+  }
+  app.appendChild($(`<div>${head}<div class="body">${bodyHtml}</div></div>`));
+  app.appendChild(navBar());
+  const b=document.getElementById('back'); if(b) b.onclick=()=>go('home');
+  const ba=document.getElementById('backapp'); if(ba) ba.onclick=toShop;
+  const bell=document.getElementById('bell'); if(bell) bell.onclick=openNotifications;
+  const av=document.getElementById('avatar'); if(av) av.onclick=()=>go('account');
+}
+function navBar(){
+  const items=[['home','Home','home'],['payments','Payments','receipt_long'],['service','Service','handyman'],['account','Account','person']];
+  const nav=$(`<div class="nav"></div>`);
+  items.forEach(([k,l,sym])=>{ const on=(k===CURRENT); const btn=$(`<button class="${on?'on':''}"><span class="navic"><span class="msym">${sym}</span></span><span>${l}</span></button>`); btn.onclick=()=>go(k); nav.appendChild(btn); });
+  return nav;
+}
+async function go(view){ CURRENT=view; try{
+  if(view==='home') await viewHome();
+  else if(view==='payments') await viewPayments();
+  else if(view==='service') viewBooking();
+  else if(view==='account') await viewAccount();
+  else if(view==='statement') await viewStatement();
+}catch(e){ shell(`<div class="loading">${(e&&e.error)||'Something went wrong.'}</div>`,{title:'OWN.CAR'}); } }
+
+const greeting=()=>{ const h=new Date(Date.now()+4*3600*1000).getUTCHours(); return h<12?'Good morning':h<18?'Good afternoon':'Good evening'; };
+
+// ---------- HOME ----------
+async function viewHome(){
+  shell('<div class="loading">Loading…</div>');
+  const me=await api('/api/me'); ME=me;
+  let invoices=[]; try{ const r=await api('/api/invoices'); invoices=r.invoices||[]; }catch(e){}
+  try{ const n=await api('/api/notifications'); UNREAD=n.unread||0; NOTIFS=n.notifications||[]; }catch(e){}
+  const invoiced=invoices.reduce((s,i)=>s+Number(i.total||0),0);
+  const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
+  const paidAmt=Math.max(invoiced-outstanding,0);
+  const pct= invoiced? Math.round(paidAmt/invoiced*100) : 0;
+  const todayIso=new Date(Date.now()+4*3600*1000).toISOString().slice(0,10);
+  const overdue=invoices.filter(i=>Number(i.balance)>0 && (String(i.status).toLowerCase()==='overdue' || (i.due_date && i.due_date<todayIso))).reduce((s,i)=>s+Number(i.balance||0),0);
+  const v=SELECTED_VEHICLE||me.vehicle||{};
+  const plate=v.plate||'';
+  const carName=v.car||v.name||'';
+  const carSub=[plate, [v.year,v.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
+  // Ownership progress comes from the inventory "% done" for this plate.
+  // If the plate isn't found in the inventory, show 0%.
+  const barPct= typeof v.percent==='number' ? v.percent : 0;
+  const paidLabel= v.months ? `${v.months} MONTHS PAID` : `${barPct}% OWNED`;
+  const leftLabel= `${Math.max(0,100-barPct)}% LEFT`;
+  const isInactive = me.active===false;
+  const contract = isInactive ? `<div class="card contract" style="border-color:rgba(224,164,74,0.34);background:radial-gradient(420px 200px at 115% -30%,rgba(224,164,74,0.12),rgba(0,0,0,0) 62%),var(--surface)">
+    <div class="crow"><div class="cimg" style="opacity:.45"></div><div><div class="glabel" style="color:var(--muted2)">Subscription</div><div class="cname">No active subscription</div><div class="csub">No cars subscribed</div></div></div>
+    <div style="font-size:13.5px;color:var(--muted);line-height:1.55">You currently have no cars subscribed. Please settle any outstanding amount to collect your <b style="color:var(--text)">security cheque</b>.</div>
+    <button class="btn btn-primary" id="helpina" style="height:46px;margin-top:18px;font-size:14px">Contact us on WhatsApp</button>
+  </div>` : `<div class="card contract">
+    <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
+    <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${barPct}%</span></div>
+    <div class="track"><div class="fill" style="width:${barPct}%"></div></div>
+    <div class="prow"><span>${paidLabel}</span><span class="mid"></span><span>${leftLabel}</span></div>
+    <button class="btn btn-ghost" id="allcars" style="height:42px;margin-top:16px;font-size:13px">Show all cars</button>
+  </div>`;
+  const overCard = `<div class="card pay">
+    <div class="phead"><span class="glabel">Total overdue</span><div class="cardicon">${IC.card}</div></div>
+    <div class="pamt"><span class="cur">AED</span>${fmt(overdue)}</div>
+    <div class="pdue">${overdue>0?'Please clear your overdue balance.':'You have no overdue payments.'}</div>
+    <button class="btn btn-primary" id="seeinv">See invoices</button>
+  </div>`;
+  const qa=`<div class="qa2">
+    <button class="qcard" data-act="statement"><span class="qc-ic">${IC.list}</span><span class="qc-m"><span class="qc-t">Statement</span><span class="qc-s">View & download your account</span></span><span class="qc-ch">›</span></button>
+    <button class="qcard" data-act="help"><span class="qc-ic">${IC.chat}</span><span class="qc-m"><span class="qc-t">Help</span><span class="qc-s">Chat with us on WhatsApp</span></span><span class="qc-ch">›</span></button>
+  </div>`;
+  shell(`<div class="glabel">أهلاً · ${greeting()}</div>
+    <div class="greet-h">${(me.name||'').split(' ')[0]||'Welcome'}.</div>
+    <div style="height:18px"></div>${contract}${overCard}${qa}`);
+  const si=document.getElementById('seeinv'); if(si) si.onclick=()=>{ PAYTAB='invoices'; go('payments'); };
+  const ac=document.getElementById('allcars'); if(ac) ac.onclick=showCars;
+  const hi=document.getElementById('helpina'); if(hi) hi.onclick=()=>window.open(WA,'_blank');
+  app.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const a=b.dataset.act;
+    if(a==='statement') go('statement');
+    else if(a==='help') window.open(WA,'_blank');
+  });
+}
+
+// ---------- STATEMENT (from Zoho) ----------
+let STMT_RANGE={from:'',to:''};
+const dubaiNow=()=>new Date(Date.now()+4*3600*1000);
+// Quick-range presets, computed in Dubai time so they match the customer's day.
+function stmtPreset(kind){
+  const now=dubaiNow(), y=now.getUTCFullYear(), m=now.getUTCMonth();
+  const iso=(dt)=>dt.toISOString().slice(0,10), today=iso(now);
+  if(kind==='month') return {from:`${y}-${String(m+1).padStart(2,'0')}-01`,to:today};
+  if(kind==='3m') return {from:iso(new Date(Date.UTC(y,m-2,1))),to:today};
+  if(kind==='year') return {from:`${y}-01-01`,to:today};
+  return {from:'',to:''}; // all
+}
+function activeStmtKind(){
+  const r=STMT_RANGE;
+  if(!r.from&&!r.to) return 'all';
+  for(const k of ['month','3m','year']){ const p=stmtPreset(k); if(p.from===r.from&&p.to===r.to) return k; }
+  return 'custom';
+}
+function stmtPeriodLabel(){
+  const {from,to}=STMT_RANGE;
+  if(!from&&!to) return 'All transactions';
+  if(from&&to) return dmy(from)+' – '+dmy(to);
+  return from?('Since '+dmy(from)):('Up to '+dmy(to));
+}
+async function viewStatement(){
+  shell('<div class="loading">Loading…</div>',{title:'Statement',back:true});
+  const hasRange=!!(STMT_RANGE.from||STMT_RANGE.to);
+  const q=hasRange?('?from='+encodeURIComponent(STMT_RANGE.from||'')+'&to='+encodeURIComponent(STMT_RANGE.to||'')):'';
+  const {entries,summary}=await api('/api/statement'+q);
+  const due=Number(summary.closing)>0.005;
+  const active=activeStmtKind();
+  const chip=(k,l)=>`<button class="chip ${active===k?'on':''}" data-k="${k}">${l}</button>`;
+  const showOpening=!!STMT_RANGE.from && Math.abs(Number(summary.opening||0))>0.005;
+  const cells=[
+    showOpening?`<div class="stmt-cell"><div class="k">Opening</div><div class="v">AED ${fmt(summary.opening)}</div></div>`:'',
+    `<div class="stmt-cell"><div class="k">Invoiced</div><div class="v">AED ${fmt(summary.invoiced)}</div></div>`,
+    `<div class="stmt-cell"><div class="k">Paid</div><div class="v g">AED ${fmt(summary.paid)}</div></div>`,
+  ].filter(Boolean).join('');
+  const led=entries.map(e=>`<div class="row"><div class="ic" style="color:${e.credit?'var(--green)':'var(--accent)'}">${e.credit?IC.check:IC.doc}</div>
+    <div class="m"><div class="r1">${e.label}</div><div class="r2">${dmy(e.date)}</div></div>
+    <div class="r"><div class="amt2" style="${e.credit?'color:var(--green)':''}">${e.credit?'− AED '+fmt(e.credit):'AED '+fmt(e.debit)}</div></div></div>`).join('');
+  shell(`
+    <div class="chips" id="stchips" style="margin-bottom:12px">
+      ${chip('all','All')}${chip('month','This month')}${chip('3m','Last 3 months')}${chip('year','This year')}
+    </div>
+    <div class="drange">
+      <div class="datefield${STMT_RANGE.from?' set':''}" id="ff">
+        <div class="df-top">${IC.cal}<span class="df-lab">From</span></div>
+        <div class="df-val${STMT_RANGE.from?'':' empty'}">${STMT_RANGE.from?dmy(STMT_RANGE.from):'Any date'}</div>
+        <input type="date" id="from" max="${STMT_RANGE.to||''}" value="${STMT_RANGE.from||''}">
+      </div>
+      <div class="datefield${STMT_RANGE.to?' set':''}" id="ft">
+        <div class="df-top">${IC.cal}<span class="df-lab">Till</span></div>
+        <div class="df-val${STMT_RANGE.to?'':' empty'}">${STMT_RANGE.to?dmy(STMT_RANGE.to):'Any date'}</div>
+        <input type="date" id="to" min="${STMT_RANGE.from||''}" value="${STMT_RANGE.to||''}">
+      </div>
+    </div>
+    ${hasRange?'<div style="text-align:right;margin:0 2px 14px"><a id="clr" style="font-size:12px;cursor:pointer">Clear · show all</a></div>':'<div style="height:12px"></div>'}
+    <div class="summary">
+      <div class="glabel">Closing balance${due?' · due':''}</div>
+      <div class="sv ${due?'due':'ok'}">AED ${fmt(summary.closing)}</div>
+      <div class="stmt-period">${stmtPeriodLabel()}</div>
+      <div class="stmt-grid ${showOpening?'g3':'g2'}">${cells}</div>
+    </div>
+    <button class="btn btn-ghost" id="dlstmt" style="height:46px;margin-bottom:20px">↓&nbsp; Download statement (PDF)</button>
+    <div class="sec-h" style="margin:2px 2px 12px"><span class="glabel">Transactions</span><span class="glabel mut">${entries.length} ${entries.length===1?'entry':'entries'}</span></div>
+    <div class="ledger">${entries.length?led:'<div class="loading">No transactions in this period.</div>'}</div>`,{title:'Statement',back:true});
+  const applyRange=(from,to)=>{ if(from&&to&&to<from){ const t=from; from=to; to=t; } STMT_RANGE={from:from||'',to:to||''}; go('statement'); };
+  app.querySelectorAll('#stchips .chip').forEach(b=>b.onclick=()=>{ STMT_RANGE=stmtPreset(b.dataset.k); go('statement'); });
+  const onDate=()=>applyRange(app.querySelector('#from').value,app.querySelector('#to').value);
+  ['from','to'].forEach(iid=>{
+    const input=document.getElementById(iid);
+    input.onchange=onDate;
+    // On phones, tapping the (transparent) native input opens the OS date picker
+    // on its own. On desktop, nudge the calendar open with showPicker().
+    input.onclick=()=>{ try{ if(input.showPicker) input.showPicker(); }catch(e){} };
+  });
+  const clr=document.getElementById('clr'); if(clr) clr.onclick=()=>{ STMT_RANGE={from:'',to:''}; go('statement'); };
+  const ds=document.getElementById('dlstmt'); if(ds) ds.onclick=()=>downloadFile('/api/statement/pdf'+q,'Statement.pdf');
+}
+
+// ---------- PAYMENTS (timeline / invoices / receipts) ----------
+let PAYTAB='invoices';
+async function viewPayments(){
+  shell('<div class="loading">Loading…</div>',{title:'Payments'});
+  const seg=`<div class="seg" id="seg">
+    <button data-t="invoices" class="${PAYTAB==='invoices'?'on':''}">Invoices</button>
+    <button data-t="receipts" class="${PAYTAB==='receipts'?'on':''}">Receipts</button></div>`;
+  let content='';
+  if(PAYTAB==='invoices'){
+    const {invoices}=await api('/api/invoices?typed=1');
+    // Filter chips — only for the types this customer actually has.
+    const ORDER=['Long-term rent','Salik','Fine','Service','Insurance','Registration','Fuel','Other'];
+    const present=[...new Set(invoices.map(i=>i.type||'Other'))].sort((a,b)=>ORDER.indexOf(a)-ORDER.indexOf(b));
+    const chips=(invoices.length && present.length>1)
+      ? `<div class="chips" id="invf"><button class="chip on" data-f="all">All</button>${present.map(t=>`<button class="chip" data-f="${t}">${t}</button>`).join('')}</div>`
+      : '';
+    const rows=invoices.map(i=>{
+      const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
+      const ty=i.type||'Other';
+      return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}" data-type="${ty}"><div class="ic">${IC.doc}</div>
+        <div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">${ty} · Issued ${dmy(i.date)}</div></div>
+        <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${st==='paid'?'Paid':st==='overdue'?'Overdue':'Due'}</span></div></div>`;
+    }).join('');
+    content=chips+(rows||'<div class="loading">No invoices yet.</div>')+`<div class="loading" id="invfempty" style="display:none">No invoices of this type.</div>`;
+  } else {
+    const {payments}=await api('/api/receipts');
+    const rows=payments.map(p=>`<div class="row tap" data-rcpt="${p.payment_id}" data-num="${p.payment_number}"><div class="ic" style="color:var(--green)">${IC.check}</div>
+      <div class="m"><div class="r1">${p.payment_number}<span class="dl">⤓ PDF</span></div><div class="r2">${dmy(p.date)} · ${p.payment_mode||''}</div></div>
+      <div class="r"><div class="amt2" style="color:var(--green)">AED ${fmt(p.amount)}</div></div></div>`).join('');
+    content=rows||'<div class="loading">No receipts yet.</div>';
+  }
+  shell(seg+content,{title:'Payments'});
+  app.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{ PAYTAB=b.dataset.t; go('payments'); });
+  const invf=document.getElementById('invf');
+  if(invf) invf.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+    invf.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    const f=b.dataset.f; let shown=0;
+    app.querySelectorAll('.row[data-type]').forEach(r=>{ const m=(f==='all'||r.dataset.type===f); r.style.display=m?'':'none'; if(m) shown++; });
+    const emp=document.getElementById('invfempty'); if(emp) emp.style.display=shown?'none':'block';
+  });
+  app.querySelectorAll('.tap[data-inv]').forEach(r=>r.onclick=()=>downloadFile('/api/invoices/'+r.dataset.inv+'/pdf', r.dataset.num+'.pdf'));
+  app.querySelectorAll('.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
+}
+
+// ---------- ACCOUNT ----------
+async function viewAccount(){
+  const me=ME||{};
+  shell(`
+    <div class="card"><div class="glabel">Account</div>
+      <div style="font-size:20px;font-weight:800;margin-top:8px">${me.name||''}</div>
+      <div class="muted" style="font-size:13px;margin-top:3px">${me.email||''}</div>
+      ${me.phone?`<div class="muted" style="font-size:13px;margin-top:2px">${me.phone}</div>`:''}
+    </div>
+    <button class="btn btn-ghost" id="logout" style="margin-top:16px">Sign out</button>`,{title:'Account'});
+  document.getElementById('logout').onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); };
+}
+
+// ---------- BOOKING ----------
+function viewBooking(){
+  const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
+  const times=['09:00','11:30','14:00','16:30'];
+  const veh=ME&&ME.vehicle?(ME.vehicle.car||ME.vehicle.name||''):'';
+  const plate=ME&&ME.vehicle?ME.vehicle.plate:'';
+  const phone=ME&&ME.phone?ME.phone:'';
+  const minIso=new Date(Date.now()+4*3600*1000+4*864e5).toISOString().slice(0,10);
+  const maxIso=new Date(Date.now()+4*3600*1000+63*864e5).toISOString().slice(0,10);
+  if(!booking.service_type) booking.service_type='Full Service';
+  shell(`
+    <label>Car name</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}">
+    <div style="height:14px"></div>
+    <label>Number plate</label><input id="plate" placeholder="e.g. DXB A 12345" value="${plate||''}">
+    <div style="height:14px"></div>
+    <label>Phone number</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
+    <div style="height:16px"></div>
+    <label>Service type</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
+    <label>Preferred date</label><input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
+    <label>Time slot</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+    <div id="slotnote" class="muted" style="font-size:11.5px;margin:6px 2px 16px;min-height:14px"></div>
+    <label>Description of work required</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
+    <button class="btn btn-primary" id="confirm">Confirm booking</button>`,{title:'Book a Service',back:true});
+  app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  app.querySelectorAll('#times .tcell').forEach(b=>b.onclick=()=>{ if(b.classList.contains('disabled')) return; booking.time=b.dataset.t; app.querySelectorAll('#times .tcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  async function refreshSlots(){
+    const pdate=app.querySelector('#pdate').value; const note=app.querySelector('#slotnote'); const cells=app.querySelectorAll('#times .tcell');
+    cells.forEach(c=>c.classList.remove('disabled'));
+    if(!pdate){ note.textContent='Pick a date to see available times.'; return; }
+    let taken=[], full=false;
+    try{ const a=await api('/api/bookings/availability?date='+encodeURIComponent(pdate)); taken=a.takenSlots||[]; full=!!a.full; }catch(e){}
+    cells.forEach(c=>{ const t=c.dataset.t; if(full||taken.includes(t)){ c.classList.add('disabled'); c.classList.remove('on'); if(booking.time===t) booking.time=null; } });
+    note.textContent = full ? 'This day is fully booked — please choose another date.' : (taken.length?'Some times are already taken for this date.':'');
+  }
+  app.querySelector('#pdate').onchange=()=>{ booking.pdate=app.querySelector('#pdate').value; refreshSlots(); };
+  if(booking.pdate) refreshSlots();
+  app.querySelector('#confirm').onclick=async()=>{
+    const car=app.querySelector('#car').value.trim(), plateV=app.querySelector('#plate').value.trim(), phoneV=app.querySelector('#phone').value.trim(), pdate=app.querySelector('#pdate').value, desc=app.querySelector('#desc').value.trim();
+    if(!car){ toast('Please enter the car name.'); return; }
+    if(!plateV){ toast('Please enter the number plate.'); return; }
+    if(!phoneV){ toast('Please enter a phone number.'); return; }
+    if(!pdate){ toast('Please choose a preferred date.'); return; }
+    if(!booking.time){ toast('Please pick a time slot.'); return; }
+    if(!desc){ toast('Please describe the work required.'); return; }
+    booking.pdate=pdate; booking.desc=desc;
+    try{
+      await api('/api/bookings',{method:'POST',body:JSON.stringify({car_name:car,plate:plateV,phone:phoneV,service_type:booking.service_type,preferred_date:pdate,time_slot:booking.time,description:desc})});
+      showConfirmModal();
+    }catch(e){ toast((e&&e.error)||'Could not submit.'); refreshSlots(); }
+  };
+}
+async function showCars(){
+  let cars=[]; try{ const r=await api('/api/vehicles'); cars=r.vehicles||(r.plates||[]).map(p=>({plate:p})); }catch(e){}
+  const activePlate=(SELECTED_VEHICLE&&SELECTED_VEHICLE.plate)||(ME&&ME.vehicle&&ME.vehicle.plate)||'';
+  const list = cars.length
+    ? cars.map((c,i)=>{
+        const title=c.car||c.plate||'Vehicle';
+        const bits=[c.plate,[c.year,c.color].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
+        const sub=c.car?(bits + ` · ${typeof c.percent==='number'?c.percent:0}% owned`):'Number plate';
+        const on=c.plate&&c.plate===activePlate;
+        return `<button class="carpick${on?' on':''}" data-i="${i}"><div class="ic">${IC.card}</div><div class="m"><div class="r1">${title}</div><div class="r2">${sub}</div></div><div class="chev">${on?'✓':'›'}</div></button>`;
+      }).join('')
+    : '<div class="muted center" style="padding:22px 0">No cars found on your account.</div>';
+  const ov=$(`<div class="modal-ov"><div class="modal-card" style="text-align:left;max-width:380px">
+    <div class="glabel">Your cars${cars.length>1?' · '+cars.length:''}</div>
+    ${cars.length>1?'<div class="muted" style="font-size:12px;margin-top:4px">Tap a car to view it on your home screen.</div>':''}
+    <div style="height:14px"></div>${list}
+    <button class="btn btn-primary" id="cclose" style="margin-top:8px">Close</button></div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#cclose').onclick=()=>ov.remove();
+  ov.querySelectorAll('.carpick').forEach(b=>b.onclick=()=>{
+    const c=cars[Number(b.dataset.i)]; if(!c) return;
+    SELECTED_VEHICLE=c; ov.remove(); go('home');
+  });
+}
+function showConfirmModal(){
+  const ov=$(`<div class="modal-ov"><div class="modal-card">
+    <div class="rcheck">${IC.check}</div>
+    <div style="font-size:20px;font-weight:800">Booking received</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you! You'll receive a confirmation from <b style="color:var(--accent)">info@own.car</b>.</p>
+    <button class="btn btn-primary" id="mok">OK</button></div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#mok').onclick=()=>{ ov.remove(); booking={service_type:'Full Service',date:null,time:null,pdate:'',desc:''}; go('home'); };
+}
+
+// ---------- NOTIFICATIONS (bell) ----------
+async function openNotifications(){
+  let items=NOTIFS;
+  try{ const n=await api('/api/notifications'); items=n.notifications||[]; NOTIFS=items; }catch(e){}
+  const list = items.length
+    ? items.map(n=>`<div class="notif"><div class="notif-t">${n.title?esc(n.title):'Notification'}</div>${n.body?`<div class="notif-b">${esc(n.body)}</div>`:''}<div class="notif-d">${dmy(n.created)}</div></div>`).join('')
+    : '<div class="muted center" style="padding:30px 0;font-size:14px">No notifications yet.</div>';
+  const ov=$(`<div class="modal-ov"><div class="modal-card" style="text-align:left;max-width:400px;padding:22px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between"><div class="glabel">Notifications</div><button id="nclose" style="background:none;border:none;color:var(--muted);font-size:22px;line-height:1">×</button></div>
+    <div style="max-height:62vh;overflow:auto;margin-top:14px">${list}</div>
+  </div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#nclose').onclick=()=>ov.remove();
+  ov.onclick=(e)=>{ if(e.target===ov) ov.remove(); };
+  try{ await api('/api/notifications/seen',{method:'POST'}); }catch(e){}
+  UNREAD=0; const d=document.querySelector('.iconbtn .dot'); if(d) d.remove();
+}
+
+// ---------- BOOT ----------
+async function boot(){
+  try{ CFG=await api('/api/config'); }catch(e){}
+  try{ await api('/api/me'); CURRENT='home'; await viewHome(); }
+  catch(e){ renderLogin(); }
+}
+boot();
+</script>
+</body>
+</html>

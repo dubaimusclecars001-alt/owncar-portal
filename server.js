@@ -464,6 +464,9 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
 });
 
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+// The customer portal (invoices/statement/service/notifications) — opened from
+// the V4 app's Sign-in / Account tab. The V4 app itself is served at "/".
+app.get("/portal", (req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));
 
 // ---- static frontend ----
 app.use(express.static(path.join(__dirname, "public")));

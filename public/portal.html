@@ -17,8 +17,9 @@
   .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,monospace;}
   .arch{font-family:'Archivo',sans-serif;}
   .msym{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;display:inline-block;-webkit-font-smoothing:antialiased;}
-  body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;}
-  #app{width:100%;max-width:460px;min-height:100vh;background:
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
+  body{background:var(--bg);color:var(--text);display:flex;justify-content:center;touch-action:manipulation;}
+  #app{width:100%;max-width:460px;height:100%;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:
       radial-gradient(620px 320px at 100% -4%,rgba(224,188,74,0.10),rgba(0,0,0,0) 60%),var(--bg2);
     position:relative;display:flex;flex-direction:column;padding-bottom:28px;}
   .center{text-align:center;} .muted{color:var(--muted);}
@@ -30,8 +31,8 @@
   .glabel.mut{color:var(--muted2);}
   .disp{font-weight:800;letter-spacing:-.6px;}
 
-  .btn{width:100%;height:52px;border:none;border-radius:14px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;}
-  .btn-primary{background:var(--accent);color:#0B0B0C;font-weight:700;box-shadow:0 12px 26px -10px rgba(224,188,74,.55);}
+  .btn{width:100%;height:56px;border:none;border-radius:18px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary{background:linear-gradient(180deg,var(--accent-2),#C79E22);color:#120E04;font-weight:700;box-shadow:0 12px 28px -8px rgba(224,188,74,.42);}
   .btn-ghost{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--line2);font-weight:500;}
   input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:13px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
   input:focus,select:focus{border-color:var(--accent);}
@@ -108,6 +109,34 @@
   .notifrow .hub-ic{margin-bottom:0;flex:0 0 auto;}
   .notifrow .nr-m{flex:1;min-width:0;}
   .notifrow .nr-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:0 0 auto;}
+
+  /* payment page */
+  .paysum{border-radius:20px;padding:20px;margin-bottom:18px;background:radial-gradient(320px 150px at 110% -30%,rgba(224,188,74,0.16),rgba(224,188,74,0) 60%),linear-gradient(160deg,#1a1712,#141416);border:1px solid rgba(224,188,74,0.28);}
+  .paysum .sv{font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px;}
+  .amtbox{position:relative;}
+  .amtbox .cur{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600;font-size:15px;pointer-events:none;}
+  .amtbox input{padding-left:52px;font-size:18px;font-weight:700;}
+  .remain{font-size:12.5px;color:var(--muted);margin:8px 2px 20px;}
+  .remain b{color:var(--text);}
+  .paymethods{display:flex;flex-direction:column;gap:11px;margin-bottom:6px;}
+  .pm{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:15px;color:inherit;transition:border-color .15s,background .15s;}
+  .pm .msym{font-size:24px;color:var(--accent);flex:0 0 auto;}
+  .pm .pm-m{flex:1;} .pm-t{font-size:15px;font-weight:700;} .pm-s{font-size:12px;color:var(--muted);margin-top:2px;}
+  .pm .chk{width:22px;height:22px;border-radius:50%;border:2px solid var(--line2);flex:0 0 auto;display:flex;align-items:center;justify-content:center;}
+  .pm.on{border-color:var(--accent);background:var(--accent-soft);} .pm.on .chk{border-color:var(--accent);background:var(--accent);}
+  .pm.on .chk .msym{font-size:15px;color:#120E04;}
+  .pm.disabled{opacity:.5;} .pm.disabled .msym{color:var(--muted);}
+  .bankbox{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:15px;margin:14px 0;}
+  .bankrow{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);}
+  .bankrow:last-child{border-bottom:none;} .bankrow .k{color:var(--muted);} .bankrow .v{font-weight:600;text-align:right;word-break:break-all;}
+  .uploadtile{display:block;border:1.5px dashed var(--line2);border-radius:15px;background:var(--surface);cursor:pointer;overflow:hidden;margin-bottom:18px;}
+  .uploadtile input{display:none;}
+  .utinner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;width:100%;min-height:150px;padding:16px;}
+  .utinner .msym{font-size:30px;color:var(--accent);} .utinner .ut-t{font-size:13px;color:var(--muted);text-align:center;}
+  .utinner img{width:100%;max-height:280px;object-fit:contain;border-radius:8px;}
+  .notehint{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin:0 0 12px;line-height:1.5;}
+  .notehint .msym{font-size:17px;color:var(--accent);flex:0 0 auto;margin-top:1px;}
+  .notehint b{color:var(--text);font-weight:600;}
 
   /* timeline */
   .tl-row{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;margin-bottom:11px;background:var(--surface);}
@@ -364,6 +393,7 @@ async function go(view){ CURRENT=view; try{
   else if(view==='service') viewBooking();
   else if(view==='account') await viewAccount();
   else if(view==='statement') await viewStatement();
+  else if(view==='pay') await viewPay();
 }catch(e){ shell(`<div class="loading">${(e&&e.error)||'Something went wrong.'}</div>`,{title:'OWN.CAR'}); } }
 
 const greeting=()=>{ const h=new Date(Date.now()+4*3600*1000).getUTCHours(); return h<12?'Good morning':h<18?'Good afternoon':'Good evening'; };
@@ -393,7 +423,7 @@ async function viewHome(){
   const contract = isInactive ? `<div class="card contract" style="border-color:rgba(224,164,74,0.34);background:radial-gradient(420px 200px at 115% -30%,rgba(224,164,74,0.12),rgba(0,0,0,0) 62%),var(--surface)">
     <div class="crow"><div class="cimg" style="opacity:.45"></div><div><div class="glabel" style="color:var(--muted2)">Subscription</div><div class="cname">No active subscription</div><div class="csub">No cars subscribed</div></div></div>
     <div style="font-size:13.5px;color:var(--muted);line-height:1.55">You currently have no cars subscribed. Please settle any outstanding amount to collect your <b style="color:var(--text)">security cheque</b>.</div>
-    <button class="btn btn-primary" id="helpina" style="height:46px;margin-top:18px;font-size:14px">Contact us on WhatsApp</button>
+    <button class="btn btn-primary" id="helpina" style="margin-top:18px"><span class="msym" style="font-size:19px">chat</span>Contact us on WhatsApp</button>
   </div>` : `<div class="card contract">
     <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
     <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${barPct}%</span></div>
@@ -407,18 +437,24 @@ async function viewHome(){
     <div class="pdue">${overdue>0?'Please clear your overdue balance.':'You have no overdue payments.'}</div>
     <button class="btn btn-primary" id="seeinv">See invoices</button>
   </div>`;
+  const dueCard = `<div class="card pay">
+    <div class="phead"><span class="glabel">Total amount due</span><div class="cardicon">${IC.card}</div></div>
+    <div class="pamt"><span class="cur">AED</span>${fmt(outstanding)}</div>
+    <div class="pdue">${outstanding>0?'Please settle your balance to collect your <b>security cheque</b>.':'You have no outstanding balance.'}</div>
+    <button class="btn btn-primary" id="paynow">Pay now</button>
+  </div>`;
   const hub=`<div class="glabel mut" style="margin:26px 2px 2px">Manage</div>
   <div class="hub">
     <button class="hubcard" data-go="statement"><span class="hub-ic msym">receipt_long</span><span class="hub-t">Statement</span><span class="hub-s">Balance &amp; history</span></button>
     <button class="hubcard" data-go="invoices"><span class="hub-ic msym">description</span><span class="hub-t">Invoices</span><span class="hub-s">View &amp; download</span></button>
     <button class="hubcard" data-go="receipts"><span class="hub-ic msym">account_balance_wallet</span><span class="hub-t">Receipts</span><span class="hub-s">Your payments</span></button>
     <button class="hubcard" data-go="service"><span class="hub-ic msym">handyman</span><span class="hub-t">Service</span><span class="hub-s">Book maintenance</span></button>
-  </div>
-  <button class="notifrow" data-go="notifications"><span class="hub-ic msym">notifications</span><span class="nr-m"><span class="hub-t">Notifications</span><span class="hub-s">${UNREAD>0?UNREAD+' unread':"You're all caught up"}</span></span>${UNREAD>0?'<span class="nr-dot"></span>':'<span class="qc-ch">›</span>'}</button>`;
+  </div>`;
   shell(`<div class="glabel">أهلاً · ${greeting()}</div>
     <div class="greet-h">${(me.name||'').split(' ')[0]||'Welcome'}.</div>
-    <div style="height:18px"></div>${contract}${isInactive?'':overCard}${hub}`);
+    <div style="height:18px"></div>${contract}${isInactive?dueCard:overCard}${hub}`);
   const si=document.getElementById('seeinv'); if(si) si.onclick=()=>{ PAYTAB='invoices'; go('payments'); };
+  const pn=document.getElementById('paynow'); if(pn) pn.onclick=()=>go('pay');
   const ac=document.getElementById('allcars'); if(ac) ac.onclick=showCars;
   const hi=document.getElementById('helpina'); if(hi) hi.onclick=()=>window.open(WA,'_blank');
   app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
@@ -587,7 +623,9 @@ function viewBooking(){
     <label>Phone number</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
     <div style="height:16px"></div>
     <label>Service type</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
-    <label>Preferred date</label><input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
+    <label>Preferred date</label>
+    <div class="notehint"><span class="msym">info</span><span>To allow our team time to prepare, the earliest available appointment is <b>four days from today</b> (for example, a request made on the 23rd can be scheduled from the 27th).</span></div>
+    <input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
     <label>Time slot</label><div class="times" id="times">${times.map(t=>`<button class="tcell ${booking.time===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
     <div id="slotnote" class="muted" style="font-size:11.5px;margin:6px 2px 16px;min-height:14px"></div>
     <label>Description of work required</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
@@ -654,6 +692,80 @@ function showConfirmModal(){
   ov.querySelector('#mok').onclick=()=>{ ov.remove(); booking={service_type:'Full Service',date:null,time:null,pdate:'',desc:''}; go('home'); };
 }
 
+// ---------- PAY ----------
+let PAY={amount:'',mode:'',proof:''};
+function compressImage(file,cb){
+  const rd=new FileReader();
+  rd.onload=()=>{ const img=new Image(); img.onload=()=>{
+      let w=img.width,h=img.height; const mw=1200; if(w>mw){ h=Math.round(h*mw/w); w=mw; }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+      let out; try{ out=cv.toDataURL('image/jpeg',0.62); }catch(e){ out=rd.result; }
+      cb(out);
+    }; img.onerror=()=>cb(rd.result); img.src=rd.result; };
+  rd.readAsDataURL(file);
+}
+async function viewPay(){
+  shell('<div class="loading">Loading…</div>',{title:'Make a payment',back:true});
+  let invoices=[]; try{ const r=await api('/api/invoices'); invoices=r.invoices||[]; }catch(e){}
+  const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
+  if(PAY.amount===''||Number(PAY.amount)>outstanding) PAY.amount= outstanding? String(outstanding) : '';
+  const remaining=Math.max(0, outstanding-(Number(PAY.amount)||0));
+  const proofView = PAY.proof ? `<img src="${PAY.proof}">` : `<span class="msym">cloud_upload</span><span class="ut-t">Tap to upload your transfer receipt</span>`;
+  shell(`
+    <div class="paysum"><div class="glabel">Total amount due</div><div class="sv">AED ${fmt(outstanding)}</div></div>
+    <label>Amount to pay</label>
+    <div class="amtbox"><span class="cur">AED</span><input id="payamt" type="number" inputmode="decimal" min="1" max="${outstanding}" value="${PAY.amount}" placeholder="0"></div>
+    <div class="remain" id="remain">Remaining after this payment: <b>AED ${fmt(remaining)}</b></div>
+    <label>Payment method</label>
+    <div class="paymethods">
+      <button class="pm disabled" disabled><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Coming soon</span></span></button>
+      <button class="pm ${PAY.mode==='bank'?'on':''}" data-mode="bank"><span class="msym">account_balance</span><span class="pm-m"><span class="pm-t">Bank transfer</span><span class="pm-s">Transfer &amp; upload your receipt</span></span><span class="chk">${PAY.mode==='bank'?'<span class="msym">check</span>':''}</span></button>
+    </div>
+    <div id="banksec" style="${PAY.mode==='bank'?'':'display:none'}">
+      <div class="bankbox">
+        <div class="glabel mut" style="margin-bottom:8px">Transfer to</div>
+        <div class="bankrow"><span class="k">Account name</span><span class="v">Muscle Cars Rent A Car LLC</span></div>
+        <div class="bankrow"><span class="k">Bank</span><span class="v">—</span></div>
+        <div class="bankrow"><span class="k">IBAN</span><span class="v">—</span></div>
+      </div>
+      <label>Upload transfer proof</label>
+      <label class="uploadtile" id="uptile"><input type="file" accept="image/*" id="proffile"><div class="utinner" id="utinner">${proofView}</div></label>
+    </div>
+    <button class="btn btn-primary" id="paysubmit">Submit payment</button>
+  `,{title:'Make a payment',back:true});
+  const amt=document.getElementById('payamt'), rem=document.getElementById('remain');
+  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0; rem.innerHTML='Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>'; };
+  app.querySelectorAll('.pm[data-mode]').forEach(b=>b.onclick=()=>{
+    PAY.mode=b.dataset.mode;
+    app.querySelectorAll('.pm[data-mode]').forEach(x=>{ x.classList.remove('on'); const ck=x.querySelector('.chk'); if(ck) ck.innerHTML=''; });
+    b.classList.add('on'); const ck=b.querySelector('.chk'); if(ck) ck.innerHTML='<span class="msym">check</span>';
+    document.getElementById('banksec').style.display = PAY.mode==='bank'?'':'none';
+  });
+  const pf=document.getElementById('proffile');
+  if(pf) pf.onchange=()=>{ const f=pf.files&&pf.files[0]; if(!f) return; compressImage(f,(data)=>{ PAY.proof=data; const ui=document.getElementById('utinner'); if(ui) ui.innerHTML='<img src="'+data+'">'; }); };
+  document.getElementById('paysubmit').onclick=async()=>{
+    const a=Number(document.getElementById('payamt').value)||0;
+    if(a<=0){ toast('Please enter a valid amount.'); return; }
+    if(a>outstanding){ toast('Amount cannot exceed the total due.'); return; }
+    if(!PAY.mode){ toast('Please choose a payment method.'); return; }
+    if(PAY.mode==='bank' && !PAY.proof){ toast('Please upload your transfer proof.'); return; }
+    try{
+      await api('/api/payments',{method:'POST',body:JSON.stringify({amount:a,mode:PAY.mode,proof:PAY.proof})});
+      PAY={amount:'',mode:'',proof:''};
+      showPayConfirm();
+    }catch(e){ toast((e&&e.error)||'Could not submit payment.'); }
+  };
+}
+function showPayConfirm(){
+  const ov=$(`<div class="modal-ov"><div class="modal-card">
+    <div class="rcheck">${IC.check}</div>
+    <div style="font-size:20px;font-weight:800">Payment submitted</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you! We've received your payment details and will confirm it shortly.</p>
+    <button class="btn btn-primary" id="pok">Done</button></div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#pok').onclick=()=>{ ov.remove(); go('home'); };
+}
+
 // ---------- NOTIFICATIONS (bell) ----------
 async function openNotifications(){
   let items=NOTIFS;
@@ -675,6 +787,9 @@ async function openNotifications(){
 // Tell the V4 app (parent) our sign-in state changed, so its header can show
 // the customer's avatar (or revert to "Sign in").
 function notifyAuth(){ if(EMBEDDED){ try{ window.parent.postMessage('owncar-auth','*'); }catch(e){} } }
+
+// Lock zoom (iOS Safari ignores user-scalable=no) — block pinch gestures.
+['gesturestart','gesturechange','gestureend'].forEach(function(ev){ document.addEventListener(ev,function(e){ e.preventDefault(); },{passive:false}); });
 
 // ---------- BOOT ----------
 async function boot(){

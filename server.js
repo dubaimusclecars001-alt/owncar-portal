@@ -10,13 +10,14 @@ import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
+import { addPayment, listPayments, getPaymentProof, updatePaymentStatus } from "./src/payments.js";
 import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.set("trust proxy", 1); // required so login cookies work behind Render/host proxies (https)
-app.use(express.json());
+app.use(express.json({ limit: "8mb" })); // large limit so bank-transfer proof images fit
 app.use(session({
   secret: process.env.SESSION_SECRET || "dev-secret-change-me",
   resave: false,
@@ -208,6 +209,22 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
 app.post("/api/notifications/seen", requireAuth, async (req, res) => {
   try { const c = await currentCustomer(req); await setSeen(c.email); res.json({ ok: true }); }
   catch (e) { console.error(e); res.status(502).json({ error: "Could not update notifications." }); }
+});
+
+// ---- Payments (customer submits a payment + bank-transfer proof) ----
+app.post("/api/payments", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const amount = Number(req.body.amount) || 0;
+    if (amount <= 0) return res.status(400).json({ error: "Please enter a valid amount." });
+    const mode = String(req.body.mode || "bank").slice(0, 20);
+    const proof = String(req.body.proof || "");
+    if (mode === "bank" && !proof) return res.status(400).json({ error: "Please upload your transfer proof." });
+    if (proof.length > 7 * 1024 * 1024) return res.status(413).json({ error: "Proof image is too large." });
+    const saved = await addPayment({ email: c.email, customer_name: c.contact_name, amount, mode, proof });
+    res.json({ ok: true, id: saved && saved.id });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not submit your payment." }); }
 });
 
 // ---- PDF downloads (a client can only download their own documents) ----
@@ -466,6 +483,24 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 // The customer portal (invoices/statement/service/notifications) — opened from
 // the V4 app's Sign-in / Account tab. The V4 app itself is served at "/".
+// ---- Admin: received payments ----
+app.get("/api/admin/payments", requireAdmin, async (req, res) => {
+  try { res.json({ payments: await listPayments() }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not load payments." }); }
+});
+app.get("/api/admin/payments/:id/proof", requireAdmin, async (req, res) => {
+  try { res.json({ proof: await getPaymentProof(req.params.id) }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not load proof." }); }
+});
+app.post("/api/admin/payments/:id/status", requireAdmin, async (req, res) => {
+  try {
+    const status = req.body.status;
+    if (!["Pending", "Confirmed", "Rejected"].includes(status)) return res.status(400).json({ error: "Invalid status." });
+    await updatePaymentStatus(req.params.id, status);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not update payment." }); }
+});
+
 app.get("/portal", (req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));
 
 // ---- static frontend ----

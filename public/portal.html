@@ -652,6 +652,8 @@ function viewBooking(){
     if(!plateV){ toast('Please enter the number plate.'); return; }
     if(!phoneV){ toast('Please enter a phone number.'); return; }
     if(!pdate){ toast('Please choose a preferred date.'); return; }
+    if(pdate<minIso){ noticeModal('This date isn\'t available','To give our team enough time to prepare, service appointments must be booked at least <b>4 days in advance</b>. The earliest available date is <b>'+dmy(minIso)+'</b>. Please select that date or a later one.'); return; }
+    if(pdate>maxIso){ noticeModal('This date isn\'t available','Appointments can be booked up to <b>'+dmy(maxIso)+'</b>. Please choose an earlier date.'); return; }
     if(!booking.time){ toast('Please pick a time slot.'); return; }
     if(!desc){ toast('Please describe the work required.'); return; }
     booking.pdate=pdate; booking.desc=desc;
@@ -684,6 +686,17 @@ async function showCars(){
     const c=cars[Number(b.dataset.i)]; if(!c) return;
     SELECTED_VEHICLE=c; ov.remove(); go('home');
   });
+}
+function noticeModal(title,message){
+  const ov=$(`<div class="modal-ov"><div class="modal-card">
+    <div class="rcheck" style="background:var(--accent-soft);border-color:rgba(224,188,74,0.35);color:var(--accent)"><span class="msym" style="font-size:34px">event_busy</span></div>
+    <div style="font-size:20px;font-weight:800">${title}</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.55;margin:12px 0 22px">${message}</p>
+    <button class="btn btn-primary" id="nmok">OK</button></div></div>`);
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.querySelector('#nmok').onclick=close;
+  ov.onclick=(e)=>{ if(e.target===ov) close(); };
 }
 function showConfirmModal(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">

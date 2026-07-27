@@ -9,7 +9,7 @@ import { normPlate, plateIdentity } from "./src/fleet.js";
 import { sendLoginCode, sendBookingNotice, sendBookingConfirmation, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
-import { addNotification, listAllNotifications, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
+import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus } from "./src/payments.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
@@ -497,6 +497,10 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
     const notification = await addNotification({ email, title, body });
     res.json({ ok: true, notification });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not send the notification." }); }
+});
+app.post("/api/admin/notifications/:id/delete", requireAdmin, async (req, res) => {
+  try { await deleteNotification(req.params.id); res.json({ ok: true }); }
+  catch (e) { console.error(e); res.status(502).json({ error: "Could not delete the notification." }); }
 });
 
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));

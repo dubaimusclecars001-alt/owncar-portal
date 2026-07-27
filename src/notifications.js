@@ -50,6 +50,19 @@ export async function listAllNotifications() {
   return loadJson(NFILE, []).slice().sort((a, b) => (b.created || "").localeCompare(a.created || ""));
 }
 
+// Permanently delete a notification (admin).
+export async function deleteNotification(id) {
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${NTABLE}?id=eq.${encodeURIComponent(id)}`, { method: "DELETE", headers: h({ Prefer: "return=representation" }) });
+    if (!res.ok) throw new Error("Supabase deleteNotification " + res.status + ": " + (await res.text().catch(() => "")));
+    const d = await res.json().catch(() => []); return Array.isArray(d) ? d[0] : d;
+  }
+  const all = loadJson(NFILE, []);
+  const idx = all.findIndex((n) => String(n.id) === String(id));
+  if (idx >= 0) { const [rec] = all.splice(idx, 1); saveJson(NFILE, all); return rec; }
+  return null;
+}
+
 // Notifications visible to one customer (their own + broadcasts), newest first.
 export async function listForCustomer(email) {
   const e = (email || "").toLowerCase();

@@ -433,11 +433,22 @@ async function loadNotifHistory(){
   if(!items.length){ box.innerHTML='<div class="cust-empty">No notifications sent yet.</div>'; return; }
   box.innerHTML='';
   items.forEach(n=>{
-    box.appendChild($(`<div class="bk">
+    const card=$(`<div class="bk">
       <div class="r1"><div><div class="who">${esc(n.title||'(no title)')}</div><div class="car">${n.email?('To: '+esc(n.email)):'To: All customers'}</div></div></div>
       ${n.body?`<div class="desc">${esc(n.body)}</div>`:''}
       <div class="meta"><b>Sent:</b> ${fmtDate(n.created)}</div>
-    </div>`));
+      <div class="bkact"><button class="btn danger delnotif" style="font-size:13px;padding:9px 14px">Delete</button></div>
+    </div>`);
+    const del=card.querySelector('.delnotif');
+    if(del){
+      del.onclick=async()=>{
+        if(!confirm('Delete this notification permanently? Customers will no longer see it.')) return;
+        del.disabled=true;
+        try{ await api('/api/admin/notifications/'+encodeURIComponent(n.id)+'/delete',{method:'POST'}); loadNotifHistory(); }
+        catch(e){ del.disabled=false; alert((e&&e.error)||'Could not delete the notification.'); }
+      };
+    }
+    box.appendChild(card);
   });
 }
 async function sendNotif(){

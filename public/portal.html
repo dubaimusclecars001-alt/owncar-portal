@@ -425,7 +425,7 @@ async function viewHome(){
   const isInactive = me.active===false;
   const contract = isInactive ? `<div class="card contract" style="border-color:rgba(224,164,74,0.34);background:radial-gradient(420px 200px at 115% -30%,rgba(224,164,74,0.12),rgba(0,0,0,0) 62%),var(--surface)">
     <div class="crow"><div class="cimg" style="opacity:.45"></div><div><div class="glabel" style="color:var(--muted2)">Subscription</div><div class="cname">No active subscription</div><div class="csub">No cars subscribed</div></div></div>
-    <div style="font-size:13.5px;color:var(--muted);line-height:1.55">You currently have no cars subscribed. Please settle any outstanding amount to collect your <b style="color:var(--text)">security cheque</b>.</div>
+    <div style="font-size:13.5px;color:var(--muted);line-height:1.55">You currently have no cars subscribed. Please settle any outstanding amount.</div>
     <button class="btn btn-primary" id="helpina" style="margin-top:18px"><span class="msym" style="font-size:19px">chat</span>Contact us on WhatsApp</button>
   </div>` : `<div class="card contract">
     <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
@@ -443,7 +443,7 @@ async function viewHome(){
   const dueCard = `<div class="card pay">
     <div class="phead"><span class="glabel">Total amount due</span><div class="cardicon">${IC.card}</div></div>
     <div class="pamt"><span class="cur">AED</span>${fmt(outstanding)}</div>
-    <div class="pdue">${outstanding>0?'Please settle your balance to collect your <b>security cheque</b>.':'You have no outstanding balance.'}</div>
+    <div class="pdue">${outstanding>0?'Please settle your outstanding balance.':'You have no outstanding balance.'}</div>
     <button class="btn btn-primary" id="paynow">Pay now</button>
   </div>`;
   const hub=`<div class="glabel mut" style="margin:26px 2px 2px">Manage</div>

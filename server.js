@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, enrichPlate, USE_MOCK } from "./src/zoho.js";
 import { normPlate, plateIdentity } from "./src/fleet.js";
-import { sendLoginCode, sendBookingNotice, emailConfigured } from "./src/mailer.js";
+import { sendLoginCode, sendBookingNotice, sendBookingConfirmation, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
@@ -352,6 +352,8 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "That time slot was just taken. Please pick another." });
     }
     const saved = await saveBooking(booking);
+    // Email the customer a confirmation (non-blocking — a mail failure must not fail the booking).
+    try { await sendBookingConfirmation(booking); } catch (e) { console.error("booking confirmation failed:", e.message); }
     res.json({ ok: true, id: saved && saved.id });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not submit booking." }); }
 });

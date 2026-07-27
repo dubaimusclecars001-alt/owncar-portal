@@ -55,3 +55,29 @@ export async function sendBookingNotice(booking) {
   } catch (e) { console.error("booking notice failed:", e.message); }
   console.log("[booking]", body);
 }
+
+// Confirmation emailed to the CUSTOMER when they request a service appointment.
+// Never throws — a mail failure must not fail the booking.
+export async function sendBookingConfirmation(booking) {
+  const to = booking.customer_email;
+  if (!to) return { delivered: false };
+  const vehicle = [booking.car_name, booking.plate].filter(Boolean).join(" · ");
+  const subject = "Your service appointment request — OWN.CAR";
+  const text =
+    `Dear ${booking.customer_name || "Customer"},\n\n` +
+    `Thank you for booking a service appointment with OWN.CAR. We have received your request, and our team will review and confirm your appointment shortly.\n\n` +
+    `Appointment details\n` +
+    `Service: ${booking.service_type || "-"}\n` +
+    (vehicle ? `Vehicle: ${vehicle}\n` : "") +
+    `Preferred date: ${booking.preferred_date || "-"}\n` +
+    `Preferred time: ${booking.time_slot || "-"}\n` +
+    (booking.description ? `Notes: ${booking.description}\n` : "") +
+    `\nPlease note your appointment is not yet confirmed. Our team will be in touch to finalise the details.\n\n` +
+    `Kind regards,\nMuscle Cars Rent a Car LLC`;
+  try {
+    if (BREVO_KEY) { await sendViaBrevo(to, subject, text); return { delivered: true }; }
+    if (transport) { await transport.sendMail({ from: process.env.MAIL_FROM, to, subject, text }); return { delivered: true }; }
+  } catch (e) { console.error("booking confirmation failed:", e.message); return { delivered: false }; }
+  console.log("[booking confirmation]", to, "\n" + text);
+  return { delivered: false };
+}

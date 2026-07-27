@@ -689,7 +689,7 @@ function showConfirmModal(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">
     <div class="rcheck">${IC.check}</div>
     <div style="font-size:20px;font-weight:800">Booking received</div>
-    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you! You'll receive a confirmation from <b style="color:var(--accent)">info@own.car</b>.</p>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you. Your service appointment request has been received — you will receive a confirmation email about your appointment shortly.</p>
     <button class="btn btn-primary" id="mok">OK</button></div></div>`);
   document.body.appendChild(ov);
   ov.querySelector('#mok').onclick=()=>{ ov.remove(); booking={service_type:'Full Service',date:null,time:null,pdate:'',desc:''}; go('home'); };

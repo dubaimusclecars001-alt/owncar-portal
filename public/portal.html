@@ -746,6 +746,7 @@ async function viewPay(){
       <button class="pm ${PAY.mode==='card'?'on':''}" data-mode="card"><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Pay securely by card</span></span><span class="chk">${PAY.mode==='card'?'<span class="msym">check</span>':''}</span></button>
       <button class="pm ${PAY.mode==='bank'?'on':''}" data-mode="bank"><span class="msym">account_balance</span><span class="pm-m"><span class="pm-t">Bank transfer</span><span class="pm-s">Transfer &amp; upload your receipt</span></span><span class="chk">${PAY.mode==='bank'?'<span class="msym">check</span>':''}</span></button>
     </div>
+    <div class="remain" id="cardfee" style="${PAY.mode==='card'?'':'display:none'}">Includes a 2.5% card fee — total charged: <b>AED <span id="cardtotal">${fmt(Math.round((Number(PAY.amount)||0)*1.025*100)/100)}</span></b></div>
     <div id="banksec" style="${PAY.mode==='bank'?'':'display:none'}">
       <div class="bankbox">
         <div class="glabel mut" style="margin-bottom:8px">Transfer to</div>
@@ -761,12 +762,15 @@ async function viewPay(){
     <button class="btn btn-primary" id="paysubmit">Submit payment</button>
   `,{title:'Make a payment',back:true});
   const amt=document.getElementById('payamt'), rem=document.getElementById('remain');
-  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0; rem.innerHTML='Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>'; };
+  const updCardTotal=()=>{ const a=Number((document.getElementById('payamt')||{}).value)||0; const ct=document.getElementById('cardtotal'); if(ct) ct.textContent=fmt(Math.round(a*1.025*100)/100); };
+  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0; rem.innerHTML='Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>'; updCardTotal(); };
   app.querySelectorAll('.pm[data-mode]').forEach(b=>b.onclick=()=>{
     PAY.mode=b.dataset.mode;
     app.querySelectorAll('.pm[data-mode]').forEach(x=>{ x.classList.remove('on'); const ck=x.querySelector('.chk'); if(ck) ck.innerHTML=''; });
     b.classList.add('on'); const ck=b.querySelector('.chk'); if(ck) ck.innerHTML='<span class="msym">check</span>';
     document.getElementById('banksec').style.display = PAY.mode==='bank'?'':'none';
+    const cf=document.getElementById('cardfee'); if(cf) cf.style.display = PAY.mode==='card'?'':'none';
+    updCardTotal();
   });
   app.querySelectorAll('.copyv').forEach(b=>b.onclick=()=>copyText(b.dataset.copy));
   const pf=document.getElementById('proffile');

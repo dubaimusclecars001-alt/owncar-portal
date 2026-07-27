@@ -231,6 +231,10 @@ app.post("/api/payments", requireAuth, async (req, res) => {
 // ---- Card payments via Foloosi ----
 const FOLOOSI_SECRET_KEY = process.env.FOLOOSI_SECRET_KEY || "";
 const FOLOOSI_MERCHANT_KEY = process.env.FOLOOSI_MERCHANT_KEY || "";
+// 2.5% card gateway fee added on top of the amount and paid by the customer. Only the base
+// amount (optional2) counts toward the balance/application; withFee(base) is what's charged.
+const GATEWAY_FEE = 0.025;
+const withFee = (base) => Math.round(base * (1 + GATEWAY_FEE) * 100) / 100;
 // own.car website origins allowed to start a website card payment + be redirected back to.
 const WEBSITE_ORIGINS = (process.env.WEBSITE_ORIGINS || "https://own.car,https://www.own.car,https://owncar.netlify.app,https://owncar-app.netlify.app,https://mysimmit.own.car").split(",").map((s) => s.trim()).filter(Boolean);
 function corsWebsite(req, res) {
@@ -250,21 +254,21 @@ function safeWebsiteUrl(url) {
 app.post("/api/pay/foloosi/init", requireAuth, async (req, res) => {
   try {
     if (!FOLOOSI_SECRET_KEY || !FOLOOSI_MERCHANT_KEY) return res.status(503).json({ error: "Card payments are not available right now." });
-    const amount = Math.round((Number(req.body.amount) || 0) * 100) / 100;
-    if (!(amount > 0)) return res.status(400).json({ error: "Please enter a valid amount." });
+    const base = Math.round((Number(req.body.amount) || 0) * 100) / 100;
+    if (!(base > 0)) return res.status(400).json({ error: "Please enter a valid amount." });
     const c = await currentCustomer(req);
     const r = await fetch("https://api.foloosi.com/aggregatorapi/web/initialize-setup", {
       method: "POST",
       headers: { "Content-Type": "application/json", "secret_key": FOLOOSI_SECRET_KEY },
       body: JSON.stringify({
         currency: "AED",
-        transaction_amount: amount,
+        transaction_amount: withFee(base),
         customer_name: (c && c.contact_name) || "",
         customer_email: (c && c.email) || "",
         description: "OWN.CAR payment",
         site_return_url: `${req.protocol}://${req.get("host")}/api/pay/foloosi/return`,
         optional1: (c && c.email) || "",
-        optional2: String(amount),
+        optional2: String(base),
       }),
     });
     const d = await r.json().catch(() => ({}));
@@ -292,8 +296,8 @@ app.post("/api/pay/foloosi/website-init", async (req, res) => {
   corsWebsite(req, res);
   try {
     if (!FOLOOSI_SECRET_KEY || !FOLOOSI_MERCHANT_KEY) return res.status(503).json({ error: "Card payments are not available right now." });
-    const amount = Math.round((Number(req.body.amount) || 0) * 100) / 100;
-    if (!(amount > 0)) return res.status(400).json({ error: "Please enter a valid amount." });
+    const base = Math.round((Number(req.body.amount) || 0) * 100) / 100;
+    if (!(base > 0)) return res.status(400).json({ error: "Please enter a valid amount." });
     const ref = String(req.body.ref || "").trim().slice(0, 40);
     if (!ref) return res.status(400).json({ error: "Missing application reference." });
     const returnUrl = safeWebsiteUrl(req.body.return_url);
@@ -302,13 +306,13 @@ app.post("/api/pay/foloosi/website-init", async (req, res) => {
       headers: { "Content-Type": "application/json", "secret_key": FOLOOSI_SECRET_KEY },
       body: JSON.stringify({
         currency: "AED",
-        transaction_amount: amount,
+        transaction_amount: withFee(base),
         customer_name: String(req.body.customer_name || "").slice(0, 100),
         customer_email: String(req.body.customer_email || "").slice(0, 120),
         description: String(req.body.description || "OWN.CAR subscription").slice(0, 140),
         site_return_url: `${req.protocol}://${req.get("host")}/api/pay/foloosi/return`,
         optional1: "website:" + ref,
-        optional2: String(amount),
+        optional2: String(base),
         optional3: returnUrl,
       }),
     });
@@ -331,7 +335,8 @@ app.post("/api/pay/foloosi/return", express.urlencoded({ extended: true }), asyn
     const status = String(b.status || d.status || "").toLowerCase();
     const transaction_no = d.transaction_no || b.transaction_no || "";
     const opt1 = String(d.optional1 || b.optional1 || "");
-    const amount = Number(d.amount || d.optional2 || b.optional2 || 0) || 0;
+    // optional2 is the base amount (excl. the 2.5% gateway fee) — that's what counts toward the balance/application.
+    const amount = Number(d.optional2 || b.optional2 || d.amount || 0) || 0;
     const paidQ = status === "success" ? "paid=success" : (status === "closed" || status === "cancelled") ? "paid=cancelled" : "paid=error";
     // Website subscription payment -> mark the Firebase application paid, return to the website.
     if (opt1.indexOf("website:") === 0) {
@@ -367,7 +372,7 @@ app.post("/api/pay/foloosi/webhook", express.urlencoded({ extended: true }), asy
     const event = String(b.event || (b.data && b.data.event) || "").toLowerCase();
     const txn = t.transaction_no || t.payment_reference || b.transaction_no || "";
     const opt1 = String(api.optional1 || t.optional1 || b.optional1 || "");
-    const amt = Number(t.transaction_amount || api.optional2 || 0) || 0;
+    const amt = Number(api.optional2 || t.optional2 || t.transaction_amount || 0) || 0;
     if (txn && (status === "success" || event === "order.success")) {
       if (opt1.indexOf("website:") === 0) {
         // Website subscription payment -> mark the Firebase application paid.

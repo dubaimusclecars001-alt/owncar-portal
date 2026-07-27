@@ -11,7 +11,7 @@ import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/u
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus } from "./src/payments.js";
-import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, getBookingsByDate, usingSupabase } from "./src/store.js";
+import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -386,22 +386,22 @@ app.post("/api/admin/bookings/:id/status", requireAdmin, async (req, res) => {
     res.json({ ok: true, booking });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not update status." }); }
 });
-// Manually email the customer their appointment confirmation (staff clicks a button).
-app.post("/api/admin/bookings/:id/confirm-email", requireAdmin, async (req, res) => {
+// Mark a booking's confirmation email as sent. The email itself is sent client-side
+// from the admin via EmailJS (same account/template as the website); this persists the flag.
+app.post("/api/admin/bookings/:id/confirm-sent", requireAdmin, async (req, res) => {
   try {
-    const booking = await getBooking(req.params.id);
-    if (!booking) return res.status(404).json({ error: "Booking not found." });
-    if (!booking.customer_email) return res.status(400).json({ error: "This booking has no customer email on file." });
-    const out = await sendBookingConfirmation(booking);
-    const delivered = !!(out && out.delivered);
     let confirm_sent = false;
-    if (delivered) {
-      // Persist the flag if the column exists; otherwise the email still sent (session-only).
-      try { const upd = await markBookingConfirmSent(booking.id); confirm_sent = !!(upd && upd.confirm_sent); }
-      catch (e) { console.error("confirm_sent not persisted — add a boolean 'confirm_sent' column to the bookings table to remember it:", e.message); confirm_sent = true; }
-    }
-    res.json({ ok: true, delivered, confirm_sent });
-  } catch (e) { console.error(e); res.status(500).json({ error: "Could not send the confirmation email." }); }
+    try { const upd = await markBookingConfirmSent(req.params.id); confirm_sent = !!(upd && upd.confirm_sent); }
+    catch (e) { console.error("confirm_sent not persisted — add a boolean 'confirm_sent' column to the bookings table to remember it:", e.message); confirm_sent = true; }
+    res.json({ ok: true, confirm_sent });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Could not update the booking." }); }
+});
+// Permanently delete a booking.
+app.post("/api/admin/bookings/:id/delete", requireAdmin, async (req, res) => {
+  try {
+    await deleteBooking(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not delete the booking." }); }
 });
 // ---- Admin: customer car management ----
 // Builds the full detail for one customer: name (Zoho), managed state, and the

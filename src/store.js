@@ -84,6 +84,22 @@ export async function updateBookingStatus(id, status) {
   return rec;
 }
 
+export async function deleteBooking(id) {
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: supaHeaders({ Prefer: "return=representation" }),
+    });
+    if (!res.ok) throw new Error("Supabase delete " + res.status + ": " + (await res.text().catch(() => "")));
+    const data = await res.json().catch(() => []);
+    return Array.isArray(data) ? data[0] : data;
+  }
+  const all = readFile();
+  const idx = all.findIndex((x) => String(x.id) === String(id));
+  if (idx >= 0) { const [rec] = all.splice(idx, 1); writeFile(all); return rec; }
+  return null;
+}
+
 export async function getBooking(id) {
   if (usingSupabase) {
     const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}&select=*`, { headers: supaHeaders() });

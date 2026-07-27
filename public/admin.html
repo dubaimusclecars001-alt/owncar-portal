@@ -20,8 +20,9 @@
   button{cursor:pointer;font-family:inherit;}
   .btn{border:none;border-radius:12px;font-size:14px;font-weight:700;padding:12px 18px;background:var(--accent);color:#0B0B0C;}
   .btn:disabled{opacity:.55;cursor:default;}
-  .bkact{margin-top:12px;}
+  .bkact{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
   .cmailed{color:var(--green);font-weight:700;font-size:13px;}
+  .btn.danger{background:#2a1416;color:#ff9b9b;}
   .btn.ghost{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line2);font-weight:500;}
   input{width:100%;height:50px;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
   input:focus{border-color:var(--accent);}
@@ -134,12 +135,22 @@
 <body>
 <div class="gload" id="gload"><div class="gspin"></div></div>
 <div class="wrap" id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 const $=(h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild;};
 const app=document.getElementById('app');
 const gload=document.getElementById('gload');
 const STATUSES=['Not confirmed yet','Confirmed','Service done'];
 const stClass={'Not confirmed yet':'st-not','Confirmed':'st-conf','Service done':'st-done'};
+// Confirmation email — same EmailJS account/template as the website (sent client-side).
+const OC_EMAILJS={ publicKey:'cq0CXGm0w7_K9nI5P', serviceId:'service_1gn62bd', templateId:'template_6fhiort' };
+function sendConfirmationEmail(params){
+  try{
+    if(typeof emailjs==='undefined') return Promise.resolve(false);
+    return emailjs.send(OC_EMAILJS.serviceId,OC_EMAILJS.templateId,params,{publicKey:OC_EMAILJS.publicKey})
+      .then(function(){return true;}).catch(function(){return false;});
+  }catch(e){ return Promise.resolve(false); }
+}
 let BOOKINGS=[], VY, VM, SEL=null, STORAGE='';
 let VIEW='bookings', CUSTOMERS=[], CUST_SEL=null, CUST_DETAIL=null;
 
@@ -257,7 +268,7 @@ function buildList(){
       <div class="meta"><b>Date:</b> ${fmtDate(b.preferred_date)} &nbsp; <b>Time:</b> ${esc(b.time_slot||'-')} &nbsp; <b>Service:</b> ${esc(b.service_type||'-')}<br>
         <b>Phone:</b> ${esc(b.phone||'-')} &nbsp; <b>Email:</b> ${esc(b.customer_email||'-')}</div>
       ${b.description?`<div class="desc">${esc(b.description)}</div>`:''}
-      <div class="bkact">${b.confirm_sent?'<span class="cmailed">✓ Confirmation email sent</span>':'<button class="btn sendmail" style="font-size:13px;padding:9px 14px">Send confirmation email</button>'}</div>
+      <div class="bkact">${b.confirm_sent?'<span class="cmailed">✓ Confirmation email sent</span>':'<button class="btn sendmail" style="font-size:13px;padding:9px 14px">Send confirmation email</button>'}<button class="btn danger delbk" style="font-size:13px;padding:9px 14px">Delete</button></div>
     </div>`);
     const btn=card2.querySelector('.stbtn');
     btn.onclick=async()=>{
@@ -273,11 +284,30 @@ function buildList(){
         if(!b.customer_email){ alert('This booking has no customer email on file.'); return; }
         if(!confirm('Send the appointment confirmation email to '+b.customer_email+'?')) return;
         sm.disabled=true; const old=sm.textContent; sm.textContent='Sending…';
+        const when=fmtDate(b.preferred_date)+(b.time_slot?(' at '+b.time_slot):'');
+        const ok=await sendConfirmationEmail({
+          to_email:String(b.customer_email).trim(),
+          customer_name:b.customer_name||'Customer',
+          car_name:(b.car_name||'your vehicle')+(b.plate?(' · '+b.plate):''),
+          service_type:b.service_type||'-',
+          appointment_date:fmtDate(b.preferred_date),
+          appointment_time:b.time_slot||'-'
+        });
+        if(!ok){ sm.disabled=false; sm.textContent=old; alert('The email could not be sent. Please try again.'); return; }
+        try{ await api('/api/admin/bookings/'+encodeURIComponent(b.id)+'/confirm-sent',{method:'POST'}); }catch(e){}
+        b.confirm_sent=true; renderDash();
+      };
+    }
+    const del=card2.querySelector('.delbk');
+    if(del){
+      del.onclick=async()=>{
+        if(!confirm('Delete this booking permanently? This cannot be undone.')) return;
+        del.disabled=true;
         try{
-          const r=await api('/api/admin/bookings/'+encodeURIComponent(b.id)+'/confirm-email',{method:'POST'});
-          if(r&&r.delivered){ b.confirm_sent=true; renderDash(); }
-          else { sm.disabled=false; sm.textContent=old; alert('The email could not be sent. Please try again.'); }
-        }catch(e){ sm.disabled=false; sm.textContent=old; alert((e&&e.error)||'Could not send the email.'); }
+          await api('/api/admin/bookings/'+encodeURIComponent(b.id)+'/delete',{method:'POST'});
+          BOOKINGS=BOOKINGS.filter(x=>String(x.id)!==String(b.id));
+          renderDash();
+        }catch(e){ del.disabled=false; alert((e&&e.error)||'Could not delete the booking.'); }
       };
     }
     card.appendChild(card2);

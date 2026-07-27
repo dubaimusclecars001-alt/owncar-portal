@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>OWN.CAR — Client Portal</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,600;0,700;0,800;1,800&family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap');
@@ -19,7 +19,7 @@
   .msym{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;display:inline-block;-webkit-font-smoothing:antialiased;}
   html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
   body{background:var(--bg);color:var(--text);display:flex;justify-content:center;touch-action:manipulation;}
-  #app{width:100%;max-width:460px;height:100%;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:
+  #app{width:100%;max-width:460px;height:100%;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:none;background:
       radial-gradient(620px 320px at 100% -4%,rgba(224,188,74,0.10),rgba(0,0,0,0) 60%),var(--bg2);
     position:relative;display:flex;flex-direction:column;padding-bottom:28px;}
   .center{text-align:center;} .muted{color:var(--muted);}
@@ -42,13 +42,13 @@
   label{font-size:11px;color:var(--muted);letter-spacing:.4px;display:block;margin:0 2px 8px;font-family:'Hanken Grotesk',sans-serif;text-transform:uppercase;}
 
   /* top bar (home) + sub header */
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 6px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top,0px)) 20px 6px;position:sticky;top:0;z-index:20;background:var(--bg2);}
   .tb-right{display:flex;align-items:center;gap:12px;}
   .iconbtn{width:42px;height:42px;border-radius:13px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);position:relative;}
   .iconbtn svg{width:19px;height:19px;}
   .iconbtn .dot{position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
   .avatar{width:42px;height:42px;border-radius:13px;background:var(--accent);color:#0B0B0C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;border:none;}
-  .subhead{display:flex;align-items:center;gap:12px;padding:18px 20px 8px;}
+  .subhead{display:flex;align-items:center;gap:12px;padding:calc(18px + env(safe-area-inset-top,0px)) 20px 8px;position:sticky;top:0;z-index:20;background:var(--bg2);}
   .backbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;}
   .htitle{font-size:19px;font-weight:700;letter-spacing:-.3px;}
   /* back-to-app (returns to the V4 shop) */

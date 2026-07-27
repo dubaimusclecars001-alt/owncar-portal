@@ -11,7 +11,7 @@ import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/u
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus } from "./src/payments.js";
-import { saveBooking, listBookings, updateBookingStatus, getBookingsByDate, usingSupabase } from "./src/store.js";
+import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -352,8 +352,8 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "That time slot was just taken. Please pick another." });
     }
     const saved = await saveBooking(booking);
-    // Email the customer a confirmation (non-blocking — a mail failure must not fail the booking).
-    try { await sendBookingConfirmation(booking); } catch (e) { console.error("booking confirmation failed:", e.message); }
+    // No email here — the customer only sees the on-screen confirmation. The confirmation
+    // email is sent manually by staff from the admin (POST /api/admin/bookings/:id/confirm-email).
     res.json({ ok: true, id: saved && saved.id });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not submit booking." }); }
 });
@@ -385,6 +385,23 @@ app.post("/api/admin/bookings/:id/status", requireAdmin, async (req, res) => {
     const booking = await updateBookingStatus(req.params.id, status);
     res.json({ ok: true, booking });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not update status." }); }
+});
+// Manually email the customer their appointment confirmation (staff clicks a button).
+app.post("/api/admin/bookings/:id/confirm-email", requireAdmin, async (req, res) => {
+  try {
+    const booking = await getBooking(req.params.id);
+    if (!booking) return res.status(404).json({ error: "Booking not found." });
+    if (!booking.customer_email) return res.status(400).json({ error: "This booking has no customer email on file." });
+    const out = await sendBookingConfirmation(booking);
+    const delivered = !!(out && out.delivered);
+    let confirm_sent = false;
+    if (delivered) {
+      // Persist the flag if the column exists; otherwise the email still sent (session-only).
+      try { const upd = await markBookingConfirmSent(booking.id); confirm_sent = !!(upd && upd.confirm_sent); }
+      catch (e) { console.error("confirm_sent not persisted — add a boolean 'confirm_sent' column to the bookings table to remember it:", e.message); confirm_sent = true; }
+    }
+    res.json({ ok: true, delivered, confirm_sent });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Could not send the confirmation email." }); }
 });
 // ---- Admin: customer car management ----
 // Builds the full detail for one customer: name (Zoho), managed state, and the

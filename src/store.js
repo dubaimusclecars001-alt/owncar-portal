@@ -83,3 +83,33 @@ export async function updateBookingStatus(id, status) {
   if (rec) { rec.status = status; writeFile(all); }
   return rec;
 }
+
+export async function getBooking(id) {
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}&select=*`, { headers: supaHeaders() });
+    if (!res.ok) throw new Error("Supabase get " + res.status + ": " + (await res.text().catch(() => "")));
+    const data = await res.json();
+    return Array.isArray(data) ? data[0] || null : data;
+  }
+  return readFile().find((x) => String(x.id) === String(id)) || null;
+}
+
+// Persist that the confirmation email was sent. Needs a boolean `confirm_sent`
+// column on the bookings table; if it's missing this throws, and the caller treats
+// the send as session-only (the email still went out).
+export async function markBookingConfirmSent(id) {
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: supaHeaders({ Prefer: "return=representation" }),
+      body: JSON.stringify({ confirm_sent: true }),
+    });
+    if (!res.ok) throw new Error("Supabase confirm-sent " + res.status + ": " + (await res.text().catch(() => "")));
+    const data = await res.json();
+    return Array.isArray(data) ? data[0] : data;
+  }
+  const all = readFile();
+  const rec = all.find((x) => String(x.id) === String(id));
+  if (rec) { rec.confirm_sent = true; writeFile(all); }
+  return rec;
+}

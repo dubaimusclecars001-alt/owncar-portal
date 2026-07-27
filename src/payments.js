@@ -57,6 +57,23 @@ export async function getPaymentProof(id) {
   const rec = loadFile().find((x) => String(x.id) === String(id)); return rec ? rec.proof : "";
 }
 
+// Confirm a card payment by the Foloosi transaction reference stored in its proof text.
+// Used by the Foloosi webhook to auto-confirm (Pending -> Confirmed).
+export async function confirmPaymentByRef(ref) {
+  if (!ref) return null;
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?proof=like.*${encodeURIComponent(ref)}*&status=neq.Confirmed`, {
+      method: "PATCH", headers: h({ Prefer: "return=representation" }), body: JSON.stringify({ status: "Confirmed" }),
+    });
+    if (!res.ok) throw new Error("Supabase confirmByRef " + res.status + ": " + (await res.text().catch(() => "")));
+    const d = await res.json().catch(() => []); return Array.isArray(d) ? d[0] || null : d;
+  }
+  const all = loadFile();
+  const rec = all.find((x) => String(x.proof || "").includes(ref) && x.status !== "Confirmed");
+  if (rec) { rec.status = "Confirmed"; saveFile(all); }
+  return rec || null;
+}
+
 export async function updatePaymentStatus(id, status) {
   if (usingSupabase) {
     const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: h({ Prefer: "return=minimal" }), body: JSON.stringify({ status }) });

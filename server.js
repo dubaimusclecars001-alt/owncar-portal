@@ -10,7 +10,7 @@ import { sendLoginCode, sendBookingNotice, sendBookingConfirmation, emailConfigu
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
-import { addPayment, listPayments, getPaymentProof, updatePaymentStatus } from "./src/payments.js";
+import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef } from "./src/payments.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -288,6 +288,24 @@ app.post("/api/pay/foloosi/return", express.urlencoded({ extended: true }), asyn
     }
     return back(status === "success" ? "paid=success" : (status === "closed" || status === "cancelled") ? "paid=cancelled" : "paid=error");
   } catch (e) { console.error("foloosi return error:", e.message); return back("paid=error"); }
+});
+// GET responder so Foloosi's "ping/verify" test on the webhook URL returns 200, not 404.
+app.get("/api/pay/foloosi/webhook", (req, res) => res.json({ ok: true, endpoint: "foloosi-webhook" }));
+// Foloosi webhook (order.success): server-to-server confirmation. Auto-confirms the payment.
+app.post("/api/pay/foloosi/webhook", express.urlencoded({ extended: true }), async (req, res) => {
+  try {
+    const b = req.body || {};
+    console.log("foloosi webhook:", JSON.stringify(b).slice(0, 700));
+    const d = (b && typeof b.data === "object" && b.data) ? b.data : b;
+    const status = String(b.transaction_status || d.transaction_status || b.status || d.status || "").toLowerCase();
+    const event = String(b.event || d.event || "").toLowerCase();
+    const txn = d.transaction_no || b.transaction_no || d.payment_reference || b.payment_reference || "";
+    if (txn && (status === "success" || event === "order.success")) {
+      try { const r = await confirmPaymentByRef(txn); console.log("foloosi webhook confirmed:", r ? (r.id || true) : "no match"); }
+      catch (e) { console.error("webhook confirm failed:", e.message); }
+    }
+    res.json({ ok: true });
+  } catch (e) { console.error("foloosi webhook error:", e.message); res.json({ ok: true }); }
 });
 
 // ---- PDF downloads (a client can only download their own documents) ----

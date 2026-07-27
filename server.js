@@ -11,6 +11,7 @@ import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/u
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef } from "./src/payments.js";
+import { markApplicationPaid } from "./src/appswrite.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -230,6 +231,21 @@ app.post("/api/payments", requireAuth, async (req, res) => {
 // ---- Card payments via Foloosi ----
 const FOLOOSI_SECRET_KEY = process.env.FOLOOSI_SECRET_KEY || "";
 const FOLOOSI_MERCHANT_KEY = process.env.FOLOOSI_MERCHANT_KEY || "";
+// own.car website origins allowed to start a website card payment + be redirected back to.
+const WEBSITE_ORIGINS = (process.env.WEBSITE_ORIGINS || "https://own.car,https://www.own.car,https://owncar.netlify.app,https://owncar-app.netlify.app,https://mysimmit.own.car").split(",").map((s) => s.trim()).filter(Boolean);
+function corsWebsite(req, res) {
+  const origin = req.headers.origin;
+  if (origin && WEBSITE_ORIGINS.includes(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+  }
+}
+function safeWebsiteUrl(url) {
+  try { const u = new URL(String(url)); if (WEBSITE_ORIGINS.includes(u.origin)) return u.toString(); } catch (e) {}
+  return process.env.WEBSITE_DEFAULT_RETURN || "https://own.car";
+}
 // Create a Foloosi payment token for the amount (server-side, using the secret key).
 app.post("/api/pay/foloosi/init", requireAuth, async (req, res) => {
   try {
@@ -268,26 +284,74 @@ app.post("/api/pay/foloosi/record", requireAuth, async (req, res) => {
     res.json({ ok: true, id: saved && saved.id });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not record the payment." }); }
 });
-// Hosted-checkout return: Foloosi POSTs the result here after the customer pays. Cross-site
-// cookies aren't sent, so we identify the customer via optional1 (their email, set at init).
+// Website (own.car) subscription card payment: create a Foloosi token tagged with the
+// application's OWN-ref (optional1="website:<ref>") so the return/webhook can mark that
+// application paid in the website's Firebase. Called cross-origin from the website (CORS).
+app.options("/api/pay/foloosi/website-init", (req, res) => { corsWebsite(req, res); res.sendStatus(204); });
+app.post("/api/pay/foloosi/website-init", async (req, res) => {
+  corsWebsite(req, res);
+  try {
+    if (!FOLOOSI_SECRET_KEY || !FOLOOSI_MERCHANT_KEY) return res.status(503).json({ error: "Card payments are not available right now." });
+    const amount = Math.round((Number(req.body.amount) || 0) * 100) / 100;
+    if (!(amount > 0)) return res.status(400).json({ error: "Please enter a valid amount." });
+    const ref = String(req.body.ref || "").trim().slice(0, 40);
+    if (!ref) return res.status(400).json({ error: "Missing application reference." });
+    const returnUrl = safeWebsiteUrl(req.body.return_url);
+    const r = await fetch("https://api.foloosi.com/aggregatorapi/web/initialize-setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "secret_key": FOLOOSI_SECRET_KEY },
+      body: JSON.stringify({
+        currency: "AED",
+        transaction_amount: amount,
+        customer_name: String(req.body.customer_name || "").slice(0, 100),
+        customer_email: String(req.body.customer_email || "").slice(0, 120),
+        description: String(req.body.description || "OWN.CAR subscription").slice(0, 140),
+        site_return_url: `${req.protocol}://${req.get("host")}/api/pay/foloosi/return`,
+        optional1: "website:" + ref,
+        optional2: String(amount),
+        optional3: returnUrl,
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    const token = d && d.data && d.data.reference_token;
+    if (!token) { console.error("foloosi website init failed:", d && d.message); return res.status(502).json({ error: (d && d.message) || "Could not start the card payment." }); }
+    res.json({ reference_token: token, merchant_key: FOLOOSI_MERCHANT_KEY });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Could not start the card payment." }); }
+});
+// Hosted-checkout return: Foloosi POSTs the result here after the customer pays. optional1
+// tells us the source: "website:<OWN-ref>" -> mark the Firebase application paid + return to
+// the website; otherwise it's the customer email -> record a portal payment + return to /portal.
 app.post("/api/pay/foloosi/return", express.urlencoded({ extended: true }), async (req, res) => {
-  const back = (q) => res.set("Content-Type", "text/html").send(
-    `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#050505;color:#F2F2EE;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">Returning to OWN.CAR…<script>location.replace(${JSON.stringify("/portal?" + q)})</script></body>`);
+  const redirectTo = (url) => res.set("Content-Type", "text/html").send(
+    `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#050505;color:#F2F2EE;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">Returning to OWN.CAR…<script>location.replace(${JSON.stringify(url)})</script></body>`);
   try {
     const b = req.body || {};
     console.log("foloosi return:", JSON.stringify(b).slice(0, 700));
     const d = (b && typeof b.data === "object" && b.data) ? b.data : b;
     const status = String(b.status || d.status || "").toLowerCase();
     const transaction_no = d.transaction_no || b.transaction_no || "";
-    const email = String(d.optional1 || b.optional1 || "").toLowerCase();
+    const opt1 = String(d.optional1 || b.optional1 || "");
     const amount = Number(d.amount || d.optional2 || b.optional2 || 0) || 0;
+    const paidQ = status === "success" ? "paid=success" : (status === "closed" || status === "cancelled") ? "paid=cancelled" : "paid=error";
+    // Website subscription payment -> mark the Firebase application paid, return to the website.
+    if (opt1.indexOf("website:") === 0) {
+      const ref = opt1.slice("website:".length);
+      if (status === "success" && ref) {
+        try { await markApplicationPaid(ref, { transaction_no, paidAmount: amount }); }
+        catch (e) { console.error("website return: markApplicationPaid failed:", e.message); }
+      }
+      const dest = safeWebsiteUrl(d.optional3 || b.optional3);
+      return redirectTo(dest + (dest.indexOf("?") >= 0 ? "&" : "?") + paidQ);
+    }
+    // Portal payment -> record in Supabase, return to the portal.
+    const email = opt1.toLowerCase();
     if (status === "success" && email) {
       let customer = null; try { customer = await getCustomerByEmail(email); } catch (e) {}
       try { await addPayment({ email, customer_name: customer ? customer.contact_name : "", amount, mode: "Card", proof: transaction_no ? ("Foloosi transaction: " + transaction_no) : "Card payment" }); }
       catch (e) { console.error("foloosi return record failed:", e.message); }
     }
-    return back(status === "success" ? "paid=success" : (status === "closed" || status === "cancelled") ? "paid=cancelled" : "paid=error");
-  } catch (e) { console.error("foloosi return error:", e.message); return back("paid=error"); }
+    return redirectTo("/portal?" + paidQ);
+  } catch (e) { console.error("foloosi return error:", e.message); return redirectTo("/portal?paid=error"); }
 });
 // GET responder so Foloosi's "ping/verify" test on the webhook URL returns 200, not 404.
 app.get("/api/pay/foloosi/webhook", (req, res) => res.json({ ok: true, endpoint: "foloosi-webhook" }));
@@ -300,9 +364,19 @@ app.post("/api/pay/foloosi/webhook", express.urlencoded({ extended: true }), asy
     const status = String(b.transaction_status || d.transaction_status || b.status || d.status || "").toLowerCase();
     const event = String(b.event || d.event || "").toLowerCase();
     const txn = d.transaction_no || b.transaction_no || d.payment_reference || b.payment_reference || "";
+    const opt1 = String(d.optional1 || b.optional1 || "");
     if (txn && (status === "success" || event === "order.success")) {
-      try { const r = await confirmPaymentByRef(txn); console.log("foloosi webhook confirmed:", r ? (r.id || true) : "no match"); }
-      catch (e) { console.error("webhook confirm failed:", e.message); }
+      if (opt1.indexOf("website:") === 0) {
+        // Website subscription payment -> mark the Firebase application paid.
+        const ref = opt1.slice("website:".length);
+        const amt = Number(d.transaction_amount || b.transaction_amount || d.optional2 || b.optional2 || 0) || 0;
+        try { const w = await markApplicationPaid(ref, { transaction_no: txn, paidAmount: amt }); console.log("foloosi webhook website:", w); }
+        catch (e) { console.error("webhook markApplicationPaid failed:", e.message); }
+      } else {
+        // Portal payment -> confirm the Supabase submission.
+        try { const r = await confirmPaymentByRef(txn); console.log("foloosi webhook confirmed:", r ? (r.id || true) : "no match"); }
+        catch (e) { console.error("webhook confirm failed:", e.message); }
+      }
     }
     res.json({ ok: true });
   } catch (e) { console.error("foloosi webhook error:", e.message); res.json({ ok: true }); }

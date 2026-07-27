@@ -825,11 +825,11 @@ function checkPayReturn(){
 function showCardPayConfirm(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">
     <div class="rcheck">${IC.check}</div>
-    <div style="font-size:20px;font-weight:800">Payment received</div>
-    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you. Your card payment has been received and will be confirmed shortly.</p>
+    <div style="font-size:20px;font-weight:800">Payment successful</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you! Your card payment has gone through and will reflect on your account shortly.</p>
     <button class="btn btn-primary" id="cpok">Done</button></div></div>`);
   document.body.appendChild(ov);
-  ov.querySelector('#cpok').onclick=()=>{ ov.remove(); go('home'); };
+  ov.querySelector('#cpok').onclick=()=>{ ov.remove(); if(ME) go('home'); };
 }
 
 // ---------- NOTIFICATIONS (bell) ----------
@@ -860,8 +860,9 @@ function notifyAuth(){ if(EMBEDDED){ try{ window.parent.postMessage('owncar-auth
 // ---------- BOOT ----------
 async function boot(){
   try{ CFG=await api('/api/config'); }catch(e){}
-  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); checkPayReturn(); }
+  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); }
   catch(e){ renderLogin(); }
+  checkPayReturn();
 }
 boot();
 </script>

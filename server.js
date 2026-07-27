@@ -246,6 +246,9 @@ app.post("/api/pay/foloosi/init", requireAuth, async (req, res) => {
         customer_name: (c && c.contact_name) || "",
         customer_email: (c && c.email) || "",
         description: "OWN.CAR payment",
+        site_return_url: `${req.protocol}://${req.get("host")}/api/pay/foloosi/return`,
+        optional1: (c && c.email) || "",
+        optional2: String(amount),
       }),
     });
     const d = await r.json().catch(() => ({}));
@@ -264,6 +267,27 @@ app.post("/api/pay/foloosi/record", requireAuth, async (req, res) => {
     const saved = await addPayment({ email: c.email, customer_name: c.contact_name, amount, mode: "Card", proof: ref ? ("Foloosi transaction: " + ref) : "Card payment" });
     res.json({ ok: true, id: saved && saved.id });
   } catch (e) { console.error(e); res.status(500).json({ error: "Could not record the payment." }); }
+});
+// Hosted-checkout return: Foloosi POSTs the result here after the customer pays. Cross-site
+// cookies aren't sent, so we identify the customer via optional1 (their email, set at init).
+app.post("/api/pay/foloosi/return", express.urlencoded({ extended: true }), async (req, res) => {
+  const back = (q) => res.set("Content-Type", "text/html").send(
+    `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#050505;color:#F2F2EE;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">Returning to OWN.CAR…<script>location.replace(${JSON.stringify("/portal?" + q)})</script></body>`);
+  try {
+    const b = req.body || {};
+    console.log("foloosi return:", JSON.stringify(b).slice(0, 700));
+    const d = (b && typeof b.data === "object" && b.data) ? b.data : b;
+    const status = String(b.status || d.status || "").toLowerCase();
+    const transaction_no = d.transaction_no || b.transaction_no || "";
+    const email = String(d.optional1 || b.optional1 || "").toLowerCase();
+    const amount = Number(d.amount || d.optional2 || b.optional2 || 0) || 0;
+    if (status === "success" && email) {
+      let customer = null; try { customer = await getCustomerByEmail(email); } catch (e) {}
+      try { await addPayment({ email, customer_name: customer ? customer.contact_name : "", amount, mode: "Card", proof: transaction_no ? ("Foloosi transaction: " + transaction_no) : "Card payment" }); }
+      catch (e) { console.error("foloosi return record failed:", e.message); }
+    }
+    return back(status === "success" ? "paid=success" : (status === "closed" || status === "cancelled") ? "paid=cancelled" : "paid=error");
+  } catch (e) { console.error("foloosi return error:", e.message); return back("paid=error"); }
 });
 
 // ---- PDF downloads (a client can only download their own documents) ----

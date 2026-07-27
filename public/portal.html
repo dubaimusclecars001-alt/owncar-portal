@@ -794,42 +794,33 @@ function showPayConfirm(){
   document.body.appendChild(ov);
   ov.querySelector('#pok').onclick=()=>{ ov.remove(); go('home'); };
 }
-// ---- Foloosi card payment (widget loads only on the approved domain) ----
-var _fpay=null, _cardAmount=0, _cardHandlerBound=false;
+// ---- Foloosi card payment (hosted checkout: Apple Pay / Samsung Pay + card) ----
 function ensureFoloosi(cb){
   if(window.Foloosipay){ cb(); return; }
   var s=document.createElement('script'); s.src='https://www.foloosi.com/js/foloosipay.v2.js';
   s.onload=function(){ cb(); }; s.onerror=function(){ toast('Could not load the card service. Please try again.'); };
   document.head.appendChild(s);
 }
-function bindFoloosiHandler(){
-  if(_cardHandlerBound) return; _cardHandlerBound=true;
-  // foloosiHandler + response are globals from foloosipay.v2.js (= addEventListener('message', ...))
-  foloosiHandler(response, function(e){
-    if(!e||!e.data||!e.data.status) return;
-    if(e.data.status==='success'){
-      try{ if(_fpay&&_fpay.close) _fpay.close(); }catch(_){}
-      var txn=(e.data.data&&e.data.data.transaction_no)||'';
-      api('/api/pay/foloosi/record',{method:'POST',body:JSON.stringify({amount:_cardAmount,transaction_no:txn})}).catch(function(){});
-      PAY={amount:'',mode:'',proof:''};
-      showCardPayConfirm();
-    } else if(e.data.status==='error'){
-      toast('The payment could not be completed. Please try again.');
-    }
-  });
-}
 function payByCard(amount){
-  _cardAmount=amount;
+  toast('Opening secure checkout…');
   ensureFoloosi(function(){
-    bindFoloosiHandler();
     api('/api/pay/foloosi/init',{method:'POST',body:JSON.stringify({amount:amount})}).then(function(init){
       try{
-        if(!_fpay){ _fpay=new Foloosipay({reference_token:init.reference_token, merchant_key:init.merchant_key}); }
-        else { _fpay.reference_token=init.reference_token; _fpay.merchant_key=init.merchant_key; }
-        _fpay.open();
-      }catch(e){ toast('Could not open the card form.'); }
+        // redirect:true -> Foloosi's hosted page (Apple Pay / Samsung Pay / card), returns to /api/pay/foloosi/return
+        var fp=new Foloosipay({reference_token:init.reference_token, merchant_key:init.merchant_key, redirect:true});
+        fp.open();
+      }catch(e){ toast('Could not open the card payment.'); }
     }).catch(function(e){ toast((e&&e.error)||'Could not start the card payment.'); });
   });
+}
+// After returning from Foloosi's hosted checkout (/portal?paid=...), show the result.
+function checkPayReturn(){
+  var m=(location.search||'').match(/[?&]paid=(\w+)/);
+  if(!m) return;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+  if(m[1]==='success') showCardPayConfirm();
+  else if(m[1]==='cancelled') toast('Payment cancelled.');
+  else toast('The payment could not be completed. Please try again.');
 }
 function showCardPayConfirm(){
   const ov=$(`<div class="modal-ov"><div class="modal-card">
@@ -869,7 +860,7 @@ function notifyAuth(){ if(EMBEDDED){ try{ window.parent.postMessage('owncar-auth
 // ---------- BOOT ----------
 async function boot(){
   try{ CFG=await api('/api/config'); }catch(e){}
-  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); }
+  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); checkPayReturn(); }
   catch(e){ renderLogin(); }
 }
 boot();

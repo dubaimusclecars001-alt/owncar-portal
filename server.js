@@ -227,6 +227,45 @@ app.post("/api/payments", requireAuth, async (req, res) => {
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not submit your payment." }); }
 });
 
+// ---- Card payments via Foloosi ----
+const FOLOOSI_SECRET_KEY = process.env.FOLOOSI_SECRET_KEY || "";
+const FOLOOSI_MERCHANT_KEY = process.env.FOLOOSI_MERCHANT_KEY || "";
+// Create a Foloosi payment token for the amount (server-side, using the secret key).
+app.post("/api/pay/foloosi/init", requireAuth, async (req, res) => {
+  try {
+    if (!FOLOOSI_SECRET_KEY || !FOLOOSI_MERCHANT_KEY) return res.status(503).json({ error: "Card payments are not available right now." });
+    const amount = Math.round((Number(req.body.amount) || 0) * 100) / 100;
+    if (!(amount > 0)) return res.status(400).json({ error: "Please enter a valid amount." });
+    const c = await currentCustomer(req);
+    const r = await fetch("https://api.foloosi.com/aggregatorapi/web/initialize-setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "secret_key": FOLOOSI_SECRET_KEY },
+      body: JSON.stringify({
+        currency: "AED",
+        transaction_amount: amount,
+        customer_name: (c && c.contact_name) || "",
+        customer_email: (c && c.email) || "",
+        description: "OWN.CAR payment",
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    const token = d && d.data && d.data.reference_token;
+    if (!token) { console.error("foloosi init failed:", d && d.message); return res.status(502).json({ error: (d && d.message) || "Could not start the card payment." }); }
+    res.json({ reference_token: token, merchant_key: FOLOOSI_MERCHANT_KEY });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Could not start the card payment." }); }
+});
+// Record a card payment after the widget reports success (admin confirms against the Foloosi dashboard).
+app.post("/api/pay/foloosi/record", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const amount = Number(req.body.amount) || 0;
+    const ref = String(req.body.transaction_no || "").slice(0, 80);
+    const saved = await addPayment({ email: c.email, customer_name: c.contact_name, amount, mode: "Card", proof: ref ? ("Foloosi transaction: " + ref) : "Card payment" });
+    res.json({ ok: true, id: saved && saved.id });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Could not record the payment." }); }
+});
+
 // ---- PDF downloads (a client can only download their own documents) ----
 app.get("/api/invoices/:id/pdf", requireAuth, async (req, res) => {
   try {

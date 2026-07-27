@@ -743,7 +743,7 @@ async function viewPay(){
     <div class="remain" id="remain">Remaining after this payment: <b>AED ${fmt(remaining)}</b></div>
     <label>Payment method</label>
     <div class="paymethods">
-      <button class="pm disabled" disabled><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Coming soon</span></span></button>
+      <button class="pm ${PAY.mode==='card'?'on':''}" data-mode="card"><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Pay securely by card</span></span><span class="chk">${PAY.mode==='card'?'<span class="msym">check</span>':''}</span></button>
       <button class="pm ${PAY.mode==='bank'?'on':''}" data-mode="bank"><span class="msym">account_balance</span><span class="pm-m"><span class="pm-t">Bank transfer</span><span class="pm-s">Transfer &amp; upload your receipt</span></span><span class="chk">${PAY.mode==='bank'?'<span class="msym">check</span>':''}</span></button>
     </div>
     <div id="banksec" style="${PAY.mode==='bank'?'':'display:none'}">
@@ -776,6 +776,7 @@ async function viewPay(){
     if(a<=0){ toast('Please enter a valid amount.'); return; }
     if(a>outstanding){ toast('Amount cannot exceed the total due.'); return; }
     if(!PAY.mode){ toast('Please choose a payment method.'); return; }
+    if(PAY.mode==='card'){ payByCard(a); return; }
     if(PAY.mode==='bank' && !PAY.proof){ toast('Please upload your transfer proof.'); return; }
     try{
       await api('/api/payments',{method:'POST',body:JSON.stringify({amount:a,mode:PAY.mode,proof:PAY.proof})});
@@ -792,6 +793,52 @@ function showPayConfirm(){
     <button class="btn btn-primary" id="pok">Done</button></div></div>`);
   document.body.appendChild(ov);
   ov.querySelector('#pok').onclick=()=>{ ov.remove(); go('home'); };
+}
+// ---- Foloosi card payment (widget loads only on the approved domain) ----
+var _fpay=null, _cardAmount=0, _cardHandlerBound=false;
+function ensureFoloosi(cb){
+  if(window.Foloosipay){ cb(); return; }
+  var s=document.createElement('script'); s.src='https://www.foloosi.com/js/foloosipay.v2.js';
+  s.onload=function(){ cb(); }; s.onerror=function(){ toast('Could not load the card service. Please try again.'); };
+  document.head.appendChild(s);
+}
+function bindFoloosiHandler(){
+  if(_cardHandlerBound) return; _cardHandlerBound=true;
+  // foloosiHandler + response are globals from foloosipay.v2.js (= addEventListener('message', ...))
+  foloosiHandler(response, function(e){
+    if(!e||!e.data||!e.data.status) return;
+    if(e.data.status==='success'){
+      try{ if(_fpay&&_fpay.close) _fpay.close(); }catch(_){}
+      var txn=(e.data.data&&e.data.data.transaction_no)||'';
+      api('/api/pay/foloosi/record',{method:'POST',body:JSON.stringify({amount:_cardAmount,transaction_no:txn})}).catch(function(){});
+      PAY={amount:'',mode:'',proof:''};
+      showCardPayConfirm();
+    } else if(e.data.status==='error'){
+      toast('The payment could not be completed. Please try again.');
+    }
+  });
+}
+function payByCard(amount){
+  _cardAmount=amount;
+  ensureFoloosi(function(){
+    bindFoloosiHandler();
+    api('/api/pay/foloosi/init',{method:'POST',body:JSON.stringify({amount:amount})}).then(function(init){
+      try{
+        if(!_fpay){ _fpay=new Foloosipay({reference_token:init.reference_token, merchant_key:init.merchant_key}); }
+        else { _fpay.reference_token=init.reference_token; _fpay.merchant_key=init.merchant_key; }
+        _fpay.open();
+      }catch(e){ toast('Could not open the card form.'); }
+    }).catch(function(e){ toast((e&&e.error)||'Could not start the card payment.'); });
+  });
+}
+function showCardPayConfirm(){
+  const ov=$(`<div class="modal-ov"><div class="modal-card">
+    <div class="rcheck">${IC.check}</div>
+    <div style="font-size:20px;font-weight:800">Payment received</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:12px 0 22px">Thank you. Your card payment has been received and will be confirmed shortly.</p>
+    <button class="btn btn-primary" id="cpok">Done</button></div></div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('#cpok').onclick=()=>{ ov.remove(); go('home'); };
 }
 
 // ---------- NOTIFICATIONS (bell) ----------

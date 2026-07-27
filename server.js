@@ -10,7 +10,7 @@ import { sendLoginCode, sendBookingNotice, sendBookingConfirmation, emailConfigu
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
-import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef } from "./src/payments.js";
+import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef, saveCardPayment } from "./src/payments.js";
 import { markApplicationPaid } from "./src/appswrite.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
@@ -343,11 +343,11 @@ app.post("/api/pay/foloosi/return", express.urlencoded({ extended: true }), asyn
       const dest = safeWebsiteUrl(d.optional3 || b.optional3);
       return redirectTo(dest + (dest.indexOf("?") >= 0 ? "&" : "?") + paidQ);
     }
-    // Portal payment -> record in Supabase, return to the portal.
+    // Portal payment -> record it (Pending; the webhook confirms). De-dupes by transaction_no.
     const email = opt1.toLowerCase();
     if (status === "success" && email) {
       let customer = null; try { customer = await getCustomerByEmail(email); } catch (e) {}
-      try { await addPayment({ email, customer_name: customer ? customer.contact_name : "", amount, mode: "Card", proof: transaction_no ? ("Foloosi transaction: " + transaction_no) : "Card payment" }); }
+      try { await saveCardPayment({ email, customer_name: customer ? customer.contact_name : "", amount, transaction_no, confirmed: false }); }
       catch (e) { console.error("foloosi return record failed:", e.message); }
     }
     return redirectTo("/portal?" + paidQ);
@@ -360,21 +360,24 @@ app.post("/api/pay/foloosi/webhook", express.urlencoded({ extended: true }), asy
   try {
     const b = req.body || {};
     console.log("foloosi webhook:", JSON.stringify(b).slice(0, 700));
-    const d = (b && typeof b.data === "object" && b.data) ? b.data : b;
-    const status = String(b.transaction_status || d.transaction_status || b.status || d.status || "").toLowerCase();
-    const event = String(b.event || d.event || "").toLowerCase();
-    const txn = d.transaction_no || b.transaction_no || d.payment_reference || b.payment_reference || "";
-    const opt1 = String(d.optional1 || b.optional1 || "");
+    // Foloosi nests it as { data: { transfer: { ...fields, api: { optional1,... } } } }.
+    const t = (b.data && b.data.transfer) || b.data || b;
+    const api = (t && t.api) || (b.data && b.data.api) || b.data || b;
+    const status = String(t.transaction_status || t.status || b.status || "").toLowerCase();
+    const event = String(b.event || (b.data && b.data.event) || "").toLowerCase();
+    const txn = t.transaction_no || t.payment_reference || b.transaction_no || "";
+    const opt1 = String(api.optional1 || t.optional1 || b.optional1 || "");
+    const amt = Number(t.transaction_amount || api.optional2 || 0) || 0;
     if (txn && (status === "success" || event === "order.success")) {
       if (opt1.indexOf("website:") === 0) {
         // Website subscription payment -> mark the Firebase application paid.
         const ref = opt1.slice("website:".length);
-        const amt = Number(d.transaction_amount || b.transaction_amount || d.optional2 || b.optional2 || 0) || 0;
         try { const w = await markApplicationPaid(ref, { transaction_no: txn, paidAmount: amt }); console.log("foloosi webhook website:", w); }
         catch (e) { console.error("webhook markApplicationPaid failed:", e.message); }
       } else {
-        // Portal payment -> confirm the Supabase submission.
-        try { const r = await confirmPaymentByRef(txn); console.log("foloosi webhook confirmed:", r ? (r.id || true) : "no match"); }
+        // Portal payment -> record-and-confirm (opt1 is the customer email; de-dupes by txn).
+        let customer = null; try { customer = await getCustomerByEmail(opt1); } catch (e) {}
+        try { const r = await saveCardPayment({ email: opt1, customer_name: customer ? customer.contact_name : "", amount: amt, transaction_no: txn, confirmed: true }); console.log("foloosi webhook confirmed:", r && r.id); }
         catch (e) { console.error("webhook confirm failed:", e.message); }
       }
     }

@@ -216,7 +216,7 @@
   .nav button.on{color:var(--accent);}
   .nav button.on .navic .msym{color:var(--accent);}
 
-  .toast{position:fixed;bottom:98px;left:50%;transform:translateX(-50%);background:rgba(67,181,129,.16);border:1px solid rgba(67,181,129,.45);color:#bff0d6;border-radius:13px;padding:12px 18px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:250;max-width:88%;text-align:center;}
+  .toast{position:fixed;bottom:98px;left:50%;transform:translateX(-50%);background:rgba(67,181,129,.16);border:1px solid rgba(67,181,129,.45);color:#bff0d6;border-radius:13px;padding:12px 18px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:600;max-width:88%;text-align:center;}
   .toast.show{opacity:1;}
   .loading{text-align:center;color:var(--muted);padding:44px 0;font-size:14px;}
   .modal-ov{position:fixed;inset:0;background:rgba(5,5,7,.72);display:flex;align-items:center;justify-content:center;z-index:300;padding:26px;}
@@ -716,19 +716,29 @@ async function viewAccount(){
 }
 
 // ---------- BOOKING ----------
-function viewBooking(){
+async function viewBooking(){
   const services=['Full Service','Oil Change','Tyres & Brakes','Detailing','Other'];
   const times=['09:00','11:30','14:00','16:30'];
-  const veh=ME&&ME.vehicle?(ME.vehicle.car||ME.vehicle.name||''):'';
-  const plate=ME&&ME.vehicle?ME.vehicle.plate:'';
+  // The customer's own cars (managed list). Selecting one auto-fills the car name + plate.
+  let cars=[]; try{ const r=await api('/api/vehicles'); cars=r.vehicles||(r.plates||[]).map(p=>({plate:p})); }catch(e){}
+  const hasCars=cars.length>0;
+  const activePlate=(SELECTED_VEHICLE&&SELECTED_VEHICLE.plate)||(ME&&ME.vehicle&&ME.vehicle.plate)||'';
+  let selIdx=cars.findIndex(c=>c.plate&&c.plate===activePlate); if(selIdx<0&&hasCars) selIdx=0;
+  const initCar=hasCars?cars[selIdx]:null;
+  const veh=initCar?(initCar.car||initCar.name||''):(ME&&ME.vehicle?(ME.vehicle.car||ME.vehicle.name||''):'');
+  const plate=initCar?(initCar.plate||''):(ME&&ME.vehicle?ME.vehicle.plate:'');
   const phone=ME&&ME.phone?ME.phone:'';
   const minIso=new Date(Date.now()+4*3600*1000+4*864e5).toISOString().slice(0,10);
   const maxIso=new Date(Date.now()+4*3600*1000+63*864e5).toISOString().slice(0,10);
   if(!booking.service_type) booking.service_type='Full Service';
+  const carSelect=hasCars?`
+    <label>Select your car</label>
+    <select id="carsel" style="color-scheme:dark;margin-bottom:14px">${cars.map((c,i)=>`<option value="${i}"${i===selIdx?' selected':''}>${((c.car||c.plate||'Vehicle')+'').replace(/"/g,'')}${c.plate?(' — '+c.plate):''}</option>`).join('')}<option value="other">Other (enter manually)</option></select>`:'';
   shell(`
-    <label>Car name</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}">
+    ${carSelect}
+    <label>Car name</label><input id="car" placeholder="e.g. Chevrolet Camaro SS" value="${veh||''}"${hasCars?' readonly':''}>
     <div style="height:14px"></div>
-    <label>Number plate</label><input id="plate" placeholder="e.g. DXB A 12345" value="${plate||''}">
+    <label>Number plate</label><input id="plate" placeholder="e.g. DXB A 12345" value="${plate||''}"${hasCars?' readonly':''}>
     <div style="height:14px"></div>
     <label>Phone number</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
     <div style="height:16px"></div>
@@ -740,6 +750,14 @@ function viewBooking(){
     <div id="slotnote" class="muted" style="font-size:11.5px;margin:6px 2px 16px;min-height:14px"></div>
     <label>Description of work required</label><textarea id="desc" rows="3" placeholder="Describe what needs to be done" style="margin-bottom:16px">${booking.desc||''}</textarea>
     <button class="btn btn-primary" id="confirm">Confirm booking</button>`,{title:'Book a Service',back:true});
+  const carsel=app.querySelector('#carsel');
+  if(carsel){
+    const carInp=app.querySelector('#car'), plateInp=app.querySelector('#plate');
+    carsel.onchange=()=>{
+      if(carsel.value==='other'){ carInp.value=''; plateInp.value=''; carInp.readOnly=false; plateInp.readOnly=false; carInp.focus(); }
+      else { const c=cars[Number(carsel.value)]; if(c){ carInp.value=c.car||c.name||''; plateInp.value=c.plate||''; carInp.readOnly=true; plateInp.readOnly=true; } }
+    };
+  }
   app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
   app.querySelectorAll('#times .tcell').forEach(b=>b.onclick=()=>{ if(b.classList.contains('disabled')) return; booking.time=b.dataset.t; app.querySelectorAll('#times .tcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
   async function refreshSlots(){

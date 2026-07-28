@@ -345,11 +345,10 @@ function viewPdfInApp(url, title){
   });
 }
 function openPdfOverlay(pdf, title, url){
-  var ov=$('<div class="pdf-ov"><div class="pdf-bar"><button class="pdf-btn pdf-x" aria-label="Close">&#10005;</button><div class="pdf-title"></div><button class="pdf-btn pdf-dl" aria-label="Save">Save</button></div><div class="pdf-scroll"></div></div>');
+  var ov=$('<div class="pdf-ov"><div class="pdf-bar"><button class="pdf-btn pdf-x" aria-label="Close">&#10005;</button><div class="pdf-title"></div><span class="pdf-btn" style="visibility:hidden">&#10005;</span></div><div class="pdf-scroll"></div></div>');
   ov.querySelector('.pdf-title').textContent=title||'Document';
   var scroll=ov.querySelector('.pdf-scroll');
   ov.querySelector('.pdf-x').onclick=function(){ ov.remove(); };
-  ov.querySelector('.pdf-dl').onclick=function(){ androidSaveFile(url, title); };
   document.body.appendChild(ov);
   var dpr=Math.min(2, window.devicePixelRatio||1);
   var render=function(n){

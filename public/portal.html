@@ -221,6 +221,13 @@
   .loading{text-align:center;color:var(--muted);padding:44px 0;font-size:14px;}
   .modal-ov{position:fixed;inset:0;background:rgba(5,5,7,.72);display:flex;align-items:center;justify-content:center;z-index:300;padding:26px;}
   .modal-card{background:var(--surface);border:1px solid var(--line2);border-radius:22px;padding:28px 24px;max-width:360px;width:100%;text-align:center;}
+  .pdf-ov{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;}
+  .pdf-bar{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto;}
+  .pdf-title{flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+  .pdf-btn{background:none;border:none;color:var(--text);font-size:20px;line-height:1;padding:6px 10px;cursor:pointer;flex:0 0 auto;}
+  .pdf-dl{color:#E0BC4A;font-size:14px;font-weight:600;}
+  .pdf-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;background:#0c0c0d;display:flex;flex-direction:column;align-items:center;gap:12px;overscroll-behavior:contain;}
+  .pdf-page{background:#fff;border-radius:6px;box-shadow:0 3px 16px rgba(0,0,0,.55);max-width:100%;}
   .rcheck{width:72px;height:72px;border-radius:50%;background:var(--green-soft);border:1px solid rgba(67,181,129,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--green);}
   .rcheck svg{width:34px;height:34px;}
   .notif{border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:10px;background:var(--surface2);}
@@ -286,45 +293,11 @@ function downloadFile(url, filename){
     return;
   }
 
-  // Android: inside the packaged app the page runs in a WebView, which (a) blocks
-  // window.open and (b) cannot render PDFs inline. So fetch the PDF here — the fetch
-  // carries the session cookie, unlike a raw download-manager request — then hand the
-  // real file to the OS via the share sheet / download so an external viewer opens it.
+  // Android: the packaged app runs in a WebView that CANNOT render PDFs inline and blocks
+  // window.open — which is why it used to download. Instead, render the PDF right inside the
+  // app with pdf.js. (A "Save" button in the viewer still offers download/share as before.)
   if(isAndroid){
-    (async()=>{
-      var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
-      var fname=filename||'document.pdf';
-      try{
-        const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
-        if(!r.ok){ let m='Could not open the file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
-        const blob=await r.blob();
-
-        // 1) Native share sheet with the actual file (best: open/save in Drive, a PDF app, Gmail…).
-        try{
-          const file=new File([blob],fname,{type:'application/pdf'});
-          if(navigator.canShare && navigator.canShare({files:[file]})){
-            await navigator.share({files:[file],title:fname});
-            return;
-          }
-        }catch(e){ if(e && e.name==='AbortError') return; /* else fall through */ }
-
-        // 2) Download via a data: URL — the one URL scheme a WebView's download manager
-        //    reliably accepts (blob: URLs are ignored by many wrappers). Invoices are small.
-        try{
-          const dataUrl=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob); });
-          const a=document.createElement('a'); a.href=dataUrl; a.download=fname; a.rel='noopener';
-          document.body.appendChild(a); a.click(); a.remove();
-          toast('Saved '+fname+' — check your notifications or Downloads');
-          return;
-        }catch(e){ /* fall through */ }
-
-        // 3) Last resort: navigate to the URL so the WebView's own download listener fires.
-        try{ window.top.location.href=url; }catch(_){ location.href=url; }
-      }catch(e){
-        try{ window.top.location.href=url; }catch(_){ location.href=url; }
-      }
-      finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
-    })();
+    viewPdfInApp(url, filename||'document.pdf');
     return;
   }
 
@@ -338,6 +311,83 @@ function downloadFile(url, filename){
       a.href=u; a.download=filename||'document.pdf'; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(u),5000); toast('Downloaded '+(filename||'file'));
     }catch(e){ toast('Could not download file.'); }
+    finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+  })();
+}
+// ---- In-app PDF viewer (Android WebViews can't render PDFs natively; pdf.js draws them to canvas) ----
+var _pdfjsPromise=null;
+function ensurePdfJs(){
+  if(_pdfjsPromise) return _pdfjsPromise;
+  _pdfjsPromise=new Promise(function(res,rej){
+    if(window.pdfjsLib){ res(window.pdfjsLib); return; }
+    var s=document.createElement('script'); s.src='/vendor/pdfjs/pdf.min.js';
+    s.onload=function(){ window.pdfjsLib ? res(window.pdfjsLib) : rej(new Error('pdfjs missing')); };
+    s.onerror=function(){ _pdfjsPromise=null; rej(new Error('pdfjs load failed')); };
+    document.head.appendChild(s);
+  }).then(function(lib){ try{ lib.GlobalWorkerOptions.workerSrc='/vendor/pdfjs/pdf.worker.min.js'; }catch(e){} return lib; });
+  return _pdfjsPromise;
+}
+function viewPdfInApp(url, title){
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  var done=function(){ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); };
+  ensurePdfJs().then(function(pdfjsLib){
+    return fetch(url,{headers:{'Accept':'application/pdf'}}).then(function(r){
+      if(!r.ok) throw new Error('http '+r.status);
+      return r.arrayBuffer();
+    }).then(function(buf){
+      return pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    });
+  }).then(function(pdf){
+    done(); openPdfOverlay(pdf, title, url);
+  }).catch(function(e){
+    // Anything goes wrong (library, network, auth) -> fall back to the old save/share path.
+    done(); androidSaveFile(url, title);
+  });
+}
+function openPdfOverlay(pdf, title, url){
+  var ov=$('<div class="pdf-ov"><div class="pdf-bar"><button class="pdf-btn pdf-x" aria-label="Close">&#10005;</button><div class="pdf-title"></div><button class="pdf-btn pdf-dl" aria-label="Save">Save</button></div><div class="pdf-scroll"></div></div>');
+  ov.querySelector('.pdf-title').textContent=title||'Document';
+  var scroll=ov.querySelector('.pdf-scroll');
+  ov.querySelector('.pdf-x').onclick=function(){ ov.remove(); };
+  ov.querySelector('.pdf-dl').onclick=function(){ androidSaveFile(url, title); };
+  document.body.appendChild(ov);
+  var dpr=Math.min(2, window.devicePixelRatio||1);
+  var render=function(n){
+    if(n>pdf.numPages) return;
+    pdf.getPage(n).then(function(page){
+      var cw=(scroll.clientWidth||window.innerWidth)-24; if(cw<200) cw=(window.innerWidth||360)-24;
+      var base=page.getViewport({scale:1});
+      var vp=page.getViewport({scale:(cw/base.width)*dpr});
+      var cv=document.createElement('canvas'); cv.className='pdf-page';
+      cv.width=Math.floor(vp.width); cv.height=Math.floor(vp.height);
+      cv.style.width=cw+'px'; cv.style.height='auto';
+      scroll.appendChild(cv);
+      page.render({canvasContext:cv.getContext('2d'), viewport:vp}).promise.then(function(){ render(n+1); }, function(){ render(n+1); });
+    }, function(){});
+  };
+  render(1);
+}
+// The original Android "get the PDF out of the app" path — now used for the viewer's Save button + as a fallback.
+function androidSaveFile(url, filename){
+  (async()=>{
+    var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+    var fname=filename||'document.pdf';
+    try{
+      const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
+      if(!r.ok){ let m='Could not open the file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
+      const blob=await r.blob();
+      try{
+        const file=new File([blob],fname,{type:'application/pdf'});
+        if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:fname}); return; }
+      }catch(e){ if(e && e.name==='AbortError') return; }
+      try{
+        const dataUrl=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob); });
+        const a=document.createElement('a'); a.href=dataUrl; a.download=fname; a.rel='noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        toast('Saved '+fname+' — check your notifications or Downloads'); return;
+      }catch(e){}
+      try{ window.top.location.href=url; }catch(_){ location.href=url; }
+    }catch(e){ try{ window.top.location.href=url; }catch(_){ location.href=url; } }
     finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
   })();
 }

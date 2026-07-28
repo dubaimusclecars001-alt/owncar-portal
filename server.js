@@ -236,7 +236,7 @@ const FOLOOSI_MERCHANT_KEY = process.env.FOLOOSI_MERCHANT_KEY || "";
 const GATEWAY_FEE = 0.025;
 const withFee = (base) => Math.round(base * (1 + GATEWAY_FEE) * 100) / 100;
 // own.car website origins allowed to start a website card payment + be redirected back to.
-const WEBSITE_ORIGINS = (process.env.WEBSITE_ORIGINS || "https://own.car,https://www.own.car,https://owncar.netlify.app,https://owncar-app.netlify.app,https://mysimmit.own.car").split(",").map((s) => s.trim()).filter(Boolean);
+const WEBSITE_ORIGINS = (process.env.WEBSITE_ORIGINS || "https://own.car,https://www.own.car,https://owncar.netlify.app,https://owncar-app.netlify.app,https://mysimmit.own.car,https://owncar-portal.onrender.com").split(",").map((s) => s.trim()).filter(Boolean);
 function corsWebsite(req, res) {
   const origin = req.headers.origin;
   if (origin && WEBSITE_ORIGINS.includes(origin)) {

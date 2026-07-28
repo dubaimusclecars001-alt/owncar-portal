@@ -409,7 +409,7 @@ app.get("/api/invoices/:id/pdf", requireAuth, async (req, res) => {
     ];
     const pdf = await getInvoicePdf(inv.invoice_id, lines);
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${inv.invoice_number}.pdf"`);
+    res.setHeader("Content-Disposition", `inline; filename="${inv.invoice_number}.pdf"`);
     res.send(pdf);
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not download the invoice from Zoho Books." }); }
 });
@@ -431,7 +431,7 @@ app.get("/api/receipts/:id/pdf", requireAuth, async (req, res) => {
     ];
     const pdf = await getPaymentPdf(p.payment_id, lines);
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${p.payment_number}.pdf"`);
+    res.setHeader("Content-Disposition", `inline; filename="${p.payment_number}.pdf"`);
     res.send(pdf);
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not download the receipt from Zoho Books." }); }
 });
@@ -447,7 +447,7 @@ app.get("/api/statement/pdf", requireAuth, async (req, res) => {
     const range = st.from || st.to ? `_${st.from || "start"}_to_${st.to || "today"}` : "";
     const safe = ((c.contact_name || "account").replace(/[^a-z0-9]+/gi, "_")) + range;
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="Statement-${safe}.pdf"`);
+    res.setHeader("Content-Disposition", `inline; filename="Statement-${safe}.pdf"`);
     res.send(pdf);
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not generate the statement." }); }
 });

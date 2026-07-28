@@ -9,6 +9,7 @@
 const COLLECTION = process.env.APPLICATIONS_COLLECTION || "applications";
 let dbPromise = null;
 let disabled = false;
+let adminMod = null;   // the firebase-admin module, kept so we can use FieldValue.arrayUnion
 
 async function getDb() {
   if (disabled) return null;
@@ -19,7 +20,7 @@ async function getDb() {
     let creds;
     try { creds = JSON.parse(raw); } catch (e) { console.error("[appswrite] service account is not valid JSON — disabled"); disabled = true; return null; }
     let admin;
-    try { admin = (await import("firebase-admin")).default; } catch (e) { console.error("[appswrite] firebase-admin unavailable — disabled"); disabled = true; return null; }
+    try { admin = (await import("firebase-admin")).default; adminMod = admin; } catch (e) { console.error("[appswrite] firebase-admin unavailable — disabled"); disabled = true; return null; }
     try {
       const existing = (admin.apps || []).find((a) => a && a.name === "appswrite");
       const app = existing || admin.initializeApp({ credential: admin.credential.cert(creds) }, "appswrite");
@@ -46,5 +47,18 @@ export async function markApplicationPaid(ref, { transaction_no = "", paidAmount
     paidAt: Date.now(),
   }, { merge: true });
   console.log("[appswrite] marked application paid:", ref, doc.id);
+
+  // Booked = hide the car from the website. The website reads site/config.hidden. Defensive:
+  // never let a hide failure undo the paid write above.
+  try {
+    const carId = ((doc.data() || {}).car || {}).id;
+    if (carId && adminMod) {
+      await db.collection("site").doc("config").set(
+        { hidden: adminMod.firestore.FieldValue.arrayUnion(carId) }, { merge: true }
+      );
+      console.log("[appswrite] car hidden from website:", carId);
+    }
+  } catch (e) { console.error("[appswrite] hide car failed:", e && e.message); }
+
   return { ok: true, id: doc.id };
 }

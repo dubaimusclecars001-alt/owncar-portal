@@ -273,16 +273,27 @@ async function api(path, opts){
   try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
   finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
 }
-async function downloadFile(url, filename){
-  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
-  try{
-    const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
-    if(!r.ok){ let m='Could not download file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
-    const blob=await r.blob(); const a=document.createElement('a'); const u=URL.createObjectURL(blob);
-    a.href=u; a.download=filename||'document.pdf'; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(u),5000); toast('Downloaded '+(filename||'file'));
-  }catch(e){ toast('Could not download file.'); }
-  finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+function downloadFile(url, filename){
+  // iOS/Android ignore <a download> and can't open blob: URLs — so on mobile open the PDF URL in a
+  // new tab (viewable + shareable/savable). Must run synchronously in the tap to avoid popup blocking.
+  var ua=navigator.userAgent||'';
+  var mobile=/Android|iPhone|iPad|iPod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(mobile){
+    var w=window.open(url,'_blank');
+    if(!w){ location.href=url; }   // popup blocked -> open in place (Back returns to the app)
+    return;
+  }
+  (async()=>{
+    var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+    try{
+      const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
+      if(!r.ok){ let m='Could not download file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
+      const blob=await r.blob(); const a=document.createElement('a'); const u=URL.createObjectURL(blob);
+      a.href=u; a.download=filename||'document.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(u),5000); toast('Downloaded '+(filename||'file'));
+    }catch(e){ toast('Could not download file.'); }
+    finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+  })();
 }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
 const daysUntil=(s)=>{ if(!s) return null; const d=new Date(s); if(isNaN(d)) return null; return Math.round((d-new Date(new Date().toDateString()))/864e5); };

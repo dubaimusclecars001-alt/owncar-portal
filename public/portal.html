@@ -274,15 +274,61 @@ async function api(path, opts){
   finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
 }
 function downloadFile(url, filename){
-  // iOS/Android ignore <a download> and can't open blob: URLs — so on mobile open the PDF URL in a
-  // new tab (viewable + shareable/savable). Must run synchronously in the tap to avoid popup blocking.
   var ua=navigator.userAgent||'';
-  var mobile=/Android|iPhone|iPad|iPod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-  if(mobile){
+  var isAndroid=/Android/i.test(ua);
+  var isIOS=/iPhone|iPad|iPod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
+  // iOS (Safari + in-app WebView): opening the PDF URL in a new tab shows the built-in
+  // PDF viewer reliably. Must run synchronously in the tap to avoid popup blocking.
+  if(isIOS){
     var w=window.open(url,'_blank');
     if(!w){ location.href=url; }   // popup blocked -> open in place (Back returns to the app)
     return;
   }
+
+  // Android: inside the packaged app the page runs in a WebView, which (a) blocks
+  // window.open and (b) cannot render PDFs inline. So fetch the PDF here — the fetch
+  // carries the session cookie, unlike a raw download-manager request — then hand the
+  // real file to the OS via the share sheet / download so an external viewer opens it.
+  if(isAndroid){
+    (async()=>{
+      var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+      var fname=filename||'document.pdf';
+      try{
+        const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
+        if(!r.ok){ let m='Could not open the file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
+        const blob=await r.blob();
+
+        // 1) Native share sheet with the actual file (best: open/save in Drive, a PDF app, Gmail…).
+        try{
+          const file=new File([blob],fname,{type:'application/pdf'});
+          if(navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({files:[file],title:fname});
+            return;
+          }
+        }catch(e){ if(e && e.name==='AbortError') return; /* else fall through */ }
+
+        // 2) Download via a data: URL — the one URL scheme a WebView's download manager
+        //    reliably accepts (blob: URLs are ignored by many wrappers). Invoices are small.
+        try{
+          const dataUrl=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob); });
+          const a=document.createElement('a'); a.href=dataUrl; a.download=fname; a.rel='noopener';
+          document.body.appendChild(a); a.click(); a.remove();
+          toast('Saved '+fname+' — check your notifications or Downloads');
+          return;
+        }catch(e){ /* fall through */ }
+
+        // 3) Last resort: navigate to the URL so the WebView's own download listener fires.
+        try{ window.top.location.href=url; }catch(_){ location.href=url; }
+      }catch(e){
+        try{ window.top.location.href=url; }catch(_){ location.href=url; }
+      }
+      finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+    })();
+    return;
+  }
+
+  // Desktop: silent blob download.
   (async()=>{
     var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
     try{

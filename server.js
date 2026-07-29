@@ -690,7 +690,11 @@ app.post("/api/admin/payments/:id/status", requireAdmin, async (req, res) => {
 app.get("/portal", (req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));
 
 // ---- static frontend ----
-app.use(express.static(path.join(__dirname, "public")));
+// HTML must never be served stale — the packaged app's WebView caches hard, so force it to
+// revalidate the pages on every load (assets like images/pdf.js can still cache normally).
+app.use(express.static(path.join(__dirname, "public"), {
+  setHeaders: (res, filePath) => { if (filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache, must-revalidate"); },
+}));
 
 // ---- One-time Zoho connect helper (safe to remove after setup) ----
 app.get("/connect", (req, res) => {

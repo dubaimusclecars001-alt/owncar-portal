@@ -504,6 +504,10 @@ app.post("/api/bookings", requireAuth, async (req, res) => {
       created: new Date().toISOString(),
       status: "Not confirmed yet",
     };
+    // Oil-change bookings carry an odometer + oil-sticker photo (base64). Only attach them when
+    // present so other bookings never reference these columns (and keep sizes sane).
+    if (req.body.odometer_photo) booking.odometer_photo = String(req.body.odometer_photo).slice(0, 700000);
+    if (req.body.oil_sticker_photo) booking.oil_sticker_photo = String(req.body.oil_sticker_photo).slice(0, 700000);
     // Enforce the booking window (within the next few days).
     if (!booking.preferred_date || booking.preferred_date < firstBookable() || booking.preferred_date > lastBookable()) {
       return res.status(400).json({ error: "Please choose an available date." });

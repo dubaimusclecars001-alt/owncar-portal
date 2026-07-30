@@ -742,6 +742,14 @@ async function viewBooking(){
     <label>Phone number</label><input id="phone" type="tel" placeholder="e.g. +9715XXXXXXXX" value="${phone||''}">
     <div style="height:16px"></div>
     <label>Service type</label><div class="chips" id="chips">${services.map(s=>`<button class="chip ${s===booking.service_type?'on':''}" data-s="${s}">${s}</button>`).join('')}</div>
+    <div id="oilextra" style="${booking.service_type==='Oil Change'?'':'display:none'}">
+      <div style="height:6px"></div>
+      <label>Odometer photo</label>
+      <label class="uploadtile"><input type="file" accept="image/*" id="odofile"><div class="utinner" id="odoinner">${booking.odometer?`<img src="${booking.odometer}">`:'<span class="msym">speed</span><span class="ut-t">Tap to upload the odometer photo</span>'}</div></label>
+      <label>Oil sticker photo</label>
+      <div class="notehint" style="margin-bottom:10px"><span class="msym">info</span><span>The oil sticker is on the <b>right side of the car</b>.</span></div>
+      <label class="uploadtile"><input type="file" accept="image/*" id="oilfile"><div class="utinner" id="oilinner">${booking.oilSticker?`<img src="${booking.oilSticker}">`:'<span class="msym">local_offer</span><span class="ut-t">Tap to upload the oil sticker photo</span>'}</div></label>
+    </div>
     <label>Preferred date</label>
     <div class="notehint"><span class="msym">info</span><span>To allow our team time to prepare, the earliest available appointment is <b>four days from today</b> (for example, a request made on the 23rd can be scheduled from the 27th).</span></div>
     <input type="date" id="pdate" min="${minIso}" max="${maxIso}" value="${booking.pdate||''}" style="margin-bottom:16px">
@@ -757,8 +765,10 @@ async function viewBooking(){
       else { const c=cars[Number(carsel.value)]; if(c){ carInp.value=c.car||c.name||''; plateInp.value=c.plate||''; carInp.readOnly=true; plateInp.readOnly=true; } }
     };
   }
-  app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  app.querySelectorAll('#chips .chip').forEach(b=>b.onclick=()=>{ booking.service_type=b.dataset.s; app.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); const oe=app.querySelector('#oilextra'); if(oe) oe.style.display = booking.service_type==='Oil Change' ? '' : 'none'; });
   app.querySelectorAll('#times .tcell').forEach(b=>b.onclick=()=>{ if(b.classList.contains('disabled')) return; booking.time=b.dataset.t; app.querySelectorAll('#times .tcell').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  const odof=app.querySelector('#odofile'); if(odof) odof.onchange=()=>{ const f=odof.files&&odof.files[0]; if(!f) return; compressImage(f,(data)=>{ booking.odometer=data; const ui=app.querySelector('#odoinner'); if(ui) ui.innerHTML='<img src="'+data+'">'; }); };
+  const oilf=app.querySelector('#oilfile'); if(oilf) oilf.onchange=()=>{ const f=oilf.files&&oilf.files[0]; if(!f) return; compressImage(f,(data)=>{ booking.oilSticker=data; const ui=app.querySelector('#oilinner'); if(ui) ui.innerHTML='<img src="'+data+'">'; }); };
   async function refreshSlots(){
     const pdate=app.querySelector('#pdate').value; const note=app.querySelector('#slotnote'); const cells=app.querySelectorAll('#times .tcell');
     cells.forEach(c=>c.classList.remove('disabled'));
@@ -780,9 +790,11 @@ async function viewBooking(){
     if(pdate>maxIso){ noticeModal('This date isn\'t available','Appointments can be booked up to <b>'+dmy(maxIso)+'</b>. Please choose an earlier date.'); return; }
     if(!booking.time){ toast('Please pick a time slot.'); return; }
     if(!desc){ toast('Please describe the work required.'); return; }
+    const _oil = booking.service_type==='Oil Change';
+    if(_oil){ if(!booking.odometer){ toast('Please upload the odometer photo.'); return; } if(!booking.oilSticker){ toast('Please upload the oil sticker photo.'); return; } }
     booking.pdate=pdate; booking.desc=desc;
     try{
-      await api('/api/bookings',{method:'POST',body:JSON.stringify({car_name:car,plate:plateV,phone:phoneV,service_type:booking.service_type,preferred_date:pdate,time_slot:booking.time,description:desc})});
+      await api('/api/bookings',{method:'POST',body:JSON.stringify({car_name:car,plate:plateV,phone:phoneV,service_type:booking.service_type,preferred_date:pdate,time_slot:booking.time,description:desc,odometer_photo:_oil?(booking.odometer||''):undefined,oil_sticker_photo:_oil?(booking.oilSticker||''):undefined})});
       showConfirmModal();
     }catch(e){ toast((e&&e.error)||'Could not submit.'); refreshSlots(); }
   };

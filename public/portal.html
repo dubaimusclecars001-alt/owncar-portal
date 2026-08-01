@@ -66,8 +66,6 @@
   /* contract card */
   .contract{background:radial-gradient(420px 200px at 115% -30%,rgba(224,188,74,0.14),rgba(224,188,74,0) 62%),var(--surface);}
   .crow{display:flex;gap:15px;align-items:center;margin-bottom:20px;}
-  .cimg{width:74px;height:74px;border-radius:15px;flex:0 0 auto;border:1px solid var(--line2);
-     background:repeating-linear-gradient(135deg,#25252b,#25252b 7px,#1c1c21 7px,#1c1c21 14px);}
   .cname{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:5px;}
   .csub{font-size:13px;color:var(--muted);margin-top:1px;}
   .prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
@@ -530,11 +528,11 @@ async function viewHome(){
   const leftLabel= `${Math.max(0,100-barPct)}% LEFT`;
   const isInactive = me.active===false;
   const contract = isInactive ? `<div class="card contract" style="border-color:rgba(224,164,74,0.34);background:radial-gradient(420px 200px at 115% -30%,rgba(224,164,74,0.12),rgba(0,0,0,0) 62%),var(--surface)">
-    <div class="crow"><div class="cimg" style="opacity:.45"></div><div><div class="glabel" style="color:var(--muted2)">Subscription</div><div class="cname">No active subscription</div><div class="csub">No cars subscribed</div></div></div>
+    <div class="crow"><div><div class="glabel" style="color:var(--muted2)">Subscription</div><div class="cname">No active subscription</div><div class="csub">No cars subscribed</div></div></div>
     <div style="font-size:13.5px;color:var(--muted);line-height:1.55">You currently have no cars subscribed. Please settle any outstanding amount.</div>
     <button class="btn btn-primary" id="helpina" style="margin-top:18px"><span class="msym" style="font-size:19px">chat</span>Contact us on WhatsApp</button>
   </div>` : `<div class="card contract">
-    <div class="crow"><div class="cimg"></div><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
+    <div class="crow"><div><div class="glabel">Active Contract</div><div class="cname">${carName||plate||'Your Vehicle'}</div><div class="csub">${carName?(carSub||'Number plate'):(plate?'Number plate':'')}</div></div></div>
     <div class="prog-head"><span class="glabel mut">Ownership progress</span><span class="pct">${barPct}%</span></div>
     <div class="track"><div class="fill" style="width:${barPct}%"></div></div>
     <div class="prow"><span>${paidLabel}</span><span class="mid"></span><span>${leftLabel}</span></div>

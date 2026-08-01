@@ -487,6 +487,16 @@ async function renderPush(){
     <div style="height:12px"></div>
     <label>Message</label>
     <textarea id="pbody" rows="4" placeholder="Write the message that appears on the phone…" maxlength="300"></textarea>
+    <div style="height:12px"></div>
+    <label>Image (optional)</label>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+      <label class="btn ghost" for="pfile" style="margin:0;cursor:pointer;font-size:13px;padding:10px 14px;white-space:nowrap">📷 Upload a photo</label>
+      <input id="pfile" type="file" accept="image/*" style="display:none">
+      <span class="hint" id="pupstatus" style="margin:0"></span>
+    </div>
+    <input id="pimg" placeholder="…or paste a public https photo link" autocomplete="off" inputmode="url">
+    <div id="pimgprev" style="margin-top:10px;display:none"><img id="pimgprevimg" alt="" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--line);display:block"></div>
+    <div class="hint" style="margin-top:6px">Upload a photo, or paste a public <b>https</b> link (e.g. a car image from the website). Shows as a big picture on the phone.</div>
     <div style="height:14px"></div>
     <button class="btn" id="psend" style="width:100%">Send push</button>
     <div class="preview no" id="presult" style="margin-top:12px">This buzzes the phone right away (Android &amp; iPhone apps only). Nothing is saved — it is not the in-app bell.</div>
@@ -504,22 +514,49 @@ async function renderPush(){
   try{ if(!CUSTOMERS.length){ const d=await api('/api/admin/customers'); CUSTOMERS=d.customers||[]; } }catch(e){}
   const sel=document.getElementById('paud');
   CUSTOMERS.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=c.email; sel.appendChild(o); });
+  const img=document.getElementById('pimg'), prevBox=document.getElementById('pimgprev'), prevImg=document.getElementById('pimgprevimg');
+  img.oninput=()=>{
+    const v=img.value.trim();
+    if(/^https:\/\/\S+$/i.test(v)){ prevImg.src=v; prevBox.style.display='block'; }
+    else { prevBox.style.display='none'; prevImg.removeAttribute('src'); }
+  };
+  prevImg.onerror=()=>{ prevBox.style.display='none'; };
+  const file=document.getElementById('pfile'), upst=document.getElementById('pupstatus');
+  file.onchange=()=>{
+    const f=file.files && file.files[0]; if(!f) return;
+    if(!/^image\//.test(f.type||'')){ upst.style.color='var(--muted)'; upst.textContent='Please choose an image.'; return; }
+    if(f.size > 5*1024*1024){ upst.style.color='var(--muted)'; upst.textContent='Too large (max 5 MB).'; file.value=''; return; }
+    const r=new FileReader();
+    r.onload=async()=>{
+      upst.style.color='var(--muted)'; upst.textContent='Uploading…';
+      try{
+        const d=await api('/api/admin/push/upload',{method:'POST',body:JSON.stringify({data:r.result})});
+        img.value=d.url; img.dispatchEvent(new Event('input')); upst.style.color='var(--green)'; upst.textContent='✓ Uploaded';
+      }catch(e){ upst.style.color='var(--muted)'; upst.textContent=(e&&e.error)||'Upload failed.'; }
+      finally{ file.value=''; }
+    };
+    r.readAsDataURL(f);
+  };
   document.getElementById('psend').onclick=sendPush;
 }
 async function sendPush(){
   const email=document.getElementById('paud').value;
   const title=document.getElementById('ptitle2').value.trim();
   const body=document.getElementById('pbody').value.trim();
+  const image=document.getElementById('pimg').value.trim();
   const res=document.getElementById('presult');
   if(!title && !body){ res.className='preview no'; res.textContent='Enter a title or a message first.'; return; }
+  if(image && !/^https:\/\/\S+$/i.test(image)){ res.className='preview no'; res.textContent='The image must be a public https:// link (or leave it empty).'; return; }
   if(!confirm('Send a push notification to '+(email?email:'EVERYONE with the app')+'? Their phone will buzz right away.')) return;
   const btn=document.getElementById('psend'); btn.disabled=true; const old=btn.textContent; btn.textContent='Sending…';
   res.className='preview no'; res.textContent='Sending…';
   try{
-    const d=await api('/api/admin/push/send',{method:'POST',body:JSON.stringify({email,title,body})});
+    const d=await api('/api/admin/push/send',{method:'POST',body:JSON.stringify({email,title,body,image})});
     res.className='preview ok';
     res.textContent='✓ Sent to '+(d.devices||0)+' device'+((d.devices===1)?'':'s')+((d.failed)?(' ('+d.failed+' failed)'):'')+'.';
     document.getElementById('ptitle2').value=''; document.getElementById('pbody').value=''; document.getElementById('paud').value='';
+    document.getElementById('pimg').value=''; document.getElementById('pimgprev').style.display='none';
+    const upst=document.getElementById('pupstatus'); if(upst) upst.textContent='';
   }catch(e){
     res.className='preview no'; res.textContent=(e&&e.error)||'Could not send the push notification.';
   }finally{ btn.disabled=false; btn.textContent=old; }

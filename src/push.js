@@ -11,6 +11,44 @@ const TOKENS_TABLE = process.env.PUSH_TOKENS_TABLE || "push_tokens";
 const usingSupabase = !!(SUPA_URL && SUPA_KEY);
 const h = (extra = {}) => ({ apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", ...extra });
 
+// ---------------- image upload (Supabase Storage) ----------------
+// Turns an uploaded photo into the public https URL that FCM/APNs require for a notification image.
+const PUSH_BUCKET = process.env.PUSH_IMAGE_BUCKET || "push-images";
+let bucketReady = false;
+async function ensureBucket() {
+  if (bucketReady || !usingSupabase) return;
+  // Create the public bucket if it doesn't exist yet (already-exists errors are ignored).
+  try {
+    await fetch(`${SUPA_URL}/storage/v1/bucket`, {
+      method: "POST",
+      headers: h(),
+      body: JSON.stringify({ id: PUSH_BUCKET, name: PUSH_BUCKET, public: true }),
+    });
+  } catch (e) { /* ignore — proceed and let the upload surface any real problem */ }
+  bucketReady = true;
+}
+
+// Accepts a base64 data URL (data:image/...;base64,....) and returns a public https URL.
+export async function uploadPushImage(dataUrl) {
+  if (!usingSupabase) throw new Error("Image storage is not configured on the server.");
+  const m = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(String(dataUrl || "").trim());
+  if (!m) throw new Error("That doesn't look like an image.");
+  const mime = m[1];
+  const buf = Buffer.from(m[2], "base64");
+  if (!buf.length) throw new Error("The image is empty.");
+  if (buf.length > 5 * 1024 * 1024) throw new Error("Image is too large (max 5 MB).");
+  await ensureBucket();
+  const ext = (mime.split("/")[1] || "jpg").toLowerCase().replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+  const filePath = `push/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  const res = await fetch(`${SUPA_URL}/storage/v1/object/${PUSH_BUCKET}/${filePath}`, {
+    method: "POST",
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": mime, "x-upsert": "true" },
+    body: buf,
+  });
+  if (!res.ok) throw new Error("Upload failed (" + res.status + "): " + (await res.text().catch(() => "")));
+  return `${SUPA_URL}/storage/v1/object/public/${PUSH_BUCKET}/${filePath}`;
+}
+
 // ---------------- token storage (Supabase) ----------------
 
 // Upsert a device token -> its owner. A device has one token; re-registering just updates the owner.
@@ -61,13 +99,28 @@ async function getMessaging() {
   return msgPromise;
 }
 
-function buildMessage({ title, body, data }) {
-  return {
+// Only public https images work in a push (FCM/APNs reject http and data: URLs).
+function cleanImage(image) {
+  const s = typeof image === "string" ? image.trim() : "";
+  return /^https:\/\/\S+$/i.test(s) ? s : "";
+}
+
+function buildMessage({ title, body, data, image }) {
+  const img = cleanImage(image);
+  const msg = {
     notification: { title: title || "OWN.CAR", body: body || "" },
     data: Object.fromEntries(Object.entries(data || {}).map(([k, v]) => [String(k), String(v)])),
     android: { priority: "high", notification: { sound: "default", channelId: "owncar_default" } },
     apns: { headers: { "apns-priority": "10" }, payload: { aps: { sound: "default" } } },
   };
+  if (img) {
+    msg.notification.imageUrl = img;              // top-level (Android system tray + web)
+    msg.android.notification.imageUrl = img;      // Android BigPicture (auto in background)
+    msg.apns.payload.aps["mutable-content"] = 1;  // let the iOS service extension fetch it
+    msg.apns.fcmOptions = { imageUrl: img };      // iOS image via FCM
+    msg.data.image = img;                         // so a foreground handler can render it too
+  }
+  return msg;
 }
 
 // Send to a list of device tokens. Auto-removes tokens FCM reports as dead.

@@ -12,7 +12,7 @@ import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef, saveCardPayment } from "./src/payments.js";
 import { markApplicationPaid } from "./src/appswrite.js";
-import { saveToken, tokensForEmail, allTokens, sendToTokens } from "./src/push.js";
+import { saveToken, tokensForEmail, allTokens, sendToTokens, uploadPushImage } from "./src/push.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -682,6 +682,17 @@ app.post("/api/admin/notifications/:id/delete", requireAdmin, async (req, res) =
   catch (e) { console.error(e); res.status(502).json({ error: "Could not delete the notification." }); }
 });
 
+// Upload a photo for a push notification -> returns a public https URL (stored in Supabase Storage).
+app.post("/api/admin/push/upload", requireAdmin, async (req, res) => {
+  try {
+    const data = String(req.body.data || "");
+    if (!data) return res.status(400).json({ error: "No image was provided." });
+    if (data.length > 7 * 1024 * 1024) return res.status(413).json({ error: "Image is too large (max ~5 MB)." });
+    const url = await uploadPushImage(data);
+    res.json({ ok: true, url });
+  } catch (e) { console.error("push upload:", e.message); res.status(500).json({ error: e.message || "Could not upload the image." }); }
+});
+
 // Send a NATIVE push notification (buzzes the phone) — to one customer (by email) or everyone.
 // Dead tokens are cleaned up automatically. Returns how many devices it reached.
 app.post("/api/admin/push/send", requireAdmin, async (req, res) => {
@@ -689,10 +700,12 @@ app.post("/api/admin/push/send", requireAdmin, async (req, res) => {
     const title = String(req.body.title || "").slice(0, 120).trim();
     const body = String(req.body.body || "").slice(0, 300).trim();
     if (!title && !body) return res.status(400).json({ error: "Enter a title or message." });
+    const image = String(req.body.image || "").trim();
+    if (image && !/^https:\/\/\S+$/i.test(image)) return res.status(400).json({ error: "The image must be a public https:// link." });
     const email = String(req.body.email || "").trim().toLowerCase();
     const tokens = email ? await tokensForEmail(email) : await allTokens();
     if (!tokens.length) return res.status(404).json({ error: email ? "That customer has no device registered for notifications yet." : "No devices are registered for notifications yet." });
-    const r = await sendToTokens(tokens, { title, body, data: (req.body.data && typeof req.body.data === "object") ? req.body.data : {} });
+    const r = await sendToTokens(tokens, { title, body, image, data: (req.body.data && typeof req.body.data === "object") ? req.body.data : {} });
     if (!r.ok) return res.status(503).json({ error: "Push is not configured on the server yet." });
     res.json({ ok: true, sent: r.sent, failed: r.failed, devices: tokens.length });
   } catch (e) { console.error("push send:", e.message); res.status(500).json({ error: "Could not send the notification." }); }

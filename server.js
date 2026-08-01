@@ -12,6 +12,7 @@ import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef, saveCardPayment } from "./src/payments.js";
 import { markApplicationPaid } from "./src/appswrite.js";
+import { saveToken, tokensForEmail, allTokens, sendToTokens } from "./src/push.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -210,6 +211,17 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
 app.post("/api/notifications/seen", requireAuth, async (req, res) => {
   try { const c = await currentCustomer(req); await setSeen(c.email); res.json({ ok: true }); }
   catch (e) { console.error(e); res.status(502).json({ error: "Could not update notifications." }); }
+});
+
+// Register this device's push token against the logged-in customer. The native app reads its FCM
+// token and posts it here (through the WebView) once the customer is signed in.
+app.post("/api/push/register", requireAuth, async (req, res) => {
+  try {
+    const token = String(req.body.token || "").trim();
+    if (!token) return res.status(400).json({ error: "Missing device token." });
+    await saveToken(req.session.email, token, String(req.body.platform || "").slice(0, 20));
+    res.json({ ok: true });
+  } catch (e) { console.error("push register:", e.message); res.status(500).json({ error: "Could not register device." }); }
 });
 
 // ---- Payments (customer submits a payment + bank-transfer proof) ----
@@ -668,6 +680,22 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
 app.post("/api/admin/notifications/:id/delete", requireAdmin, async (req, res) => {
   try { await deleteNotification(req.params.id); res.json({ ok: true }); }
   catch (e) { console.error(e); res.status(502).json({ error: "Could not delete the notification." }); }
+});
+
+// Send a NATIVE push notification (buzzes the phone) — to one customer (by email) or everyone.
+// Dead tokens are cleaned up automatically. Returns how many devices it reached.
+app.post("/api/admin/push/send", requireAdmin, async (req, res) => {
+  try {
+    const title = String(req.body.title || "").slice(0, 120).trim();
+    const body = String(req.body.body || "").slice(0, 300).trim();
+    if (!title && !body) return res.status(400).json({ error: "Enter a title or message." });
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const tokens = email ? await tokensForEmail(email) : await allTokens();
+    if (!tokens.length) return res.status(404).json({ error: email ? "That customer has no device registered for notifications yet." : "No devices are registered for notifications yet." });
+    const r = await sendToTokens(tokens, { title, body, data: (req.body.data && typeof req.body.data === "object") ? req.body.data : {} });
+    if (!r.ok) return res.status(503).json({ error: "Push is not configured on the server yet." });
+    res.json({ ok: true, sent: r.sent, failed: r.failed, devices: tokens.length });
+  } catch (e) { console.error("push send:", e.message); res.status(500).json({ error: "Could not send the notification." }); }
 });
 
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));

@@ -163,7 +163,7 @@ function navHeader(active, info){
   return `<div class="top">
     <div class="brand"><div class="mono"><span>O<b>.</b>C</span></div><div><h1>OWN.CAR Admin<small>STAFF DASHBOARD</small></h1></div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div class="vnav"><button data-v="bookings" class="${active==='bookings'?'on':''}">Bookings</button><button data-v="customers" class="${active==='customers'?'on':''}">Customers</button><button data-v="payments" class="${active==='payments'?'on':''}">Payments</button><button data-v="notify" class="${active==='notify'?'on':''}">Notify</button></div>
+      <div class="vnav"><button data-v="bookings" class="${active==='bookings'?'on':''}">Bookings</button><button data-v="customers" class="${active==='customers'?'on':''}">Customers</button><button data-v="payments" class="${active==='payments'?'on':''}">Payments</button><button data-v="notify" class="${active==='notify'?'on':''}">Notify</button><button data-v="push" class="${active==='push'?'on':''}">Push</button></div>
       <span class="pillinfo">${esc(info||('storage: '+STORAGE))}</span>
       <button class="btn ghost" id="logout">Sign out</button>
     </div>
@@ -173,7 +173,7 @@ function wireHeader(){
   const lo=document.getElementById('logout'); if(lo) lo.onclick=async()=>{ await api('/api/admin/logout',{method:'POST'}); renderLogin(); };
   document.querySelectorAll('.vnav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 }
-function go(view){ VIEW=view; if(view==='customers') renderCustomers(); else if(view==='notify') renderNotify(); else if(view==='payments') renderPayments(); else renderDash(); }
+function go(view){ VIEW=view; if(view==='customers') renderCustomers(); else if(view==='notify') renderNotify(); else if(view==='push') renderPush(); else if(view==='payments') renderPayments(); else renderDash(); }
 
 async function api(path,opts){
   gload.classList.add('show');
@@ -470,6 +470,59 @@ async function sendNotif(){
     loadNotifHistory();
     alert('Notification sent.');
   }catch(e){ alert((e&&e.error)||'Could not send the notification.'); }
+}
+
+// ---------- PUSH (native — buzzes the phone) ----------
+async function renderPush(){
+  app.innerHTML='';
+  app.appendChild($(navHeader('push','storage: '+STORAGE)));
+  const grid=$(`<div class="grid"></div>`);
+  grid.appendChild($(`<div class="card">
+    <h2>Send a push notification</h2>
+    <label>To</label>
+    <select id="paud"><option value="">Everyone (all devices)</option></select>
+    <div style="height:12px"></div>
+    <label>Title</label>
+    <input id="ptitle2" placeholder="e.g. Car available — AED 2,500" autocomplete="off" maxlength="120">
+    <div style="height:12px"></div>
+    <label>Message</label>
+    <textarea id="pbody" rows="4" placeholder="Write the message that appears on the phone…" maxlength="300"></textarea>
+    <div style="height:14px"></div>
+    <button class="btn" id="psend" style="width:100%">Send push</button>
+    <div class="preview no" id="presult" style="margin-top:12px">This buzzes the phone right away (Android &amp; iPhone apps only). Nothing is saved — it is not the in-app bell.</div>
+  </div>`));
+  grid.appendChild($(`<div class="card">
+    <h2>About push</h2>
+    <div class="hint" style="font-size:12.5px;line-height:1.7;color:var(--muted)">
+      <b style="color:var(--text)">Push vs. Notify:</b> the <b>Notify</b> tab drops a message in the app's bell that customers see next time they open it. <b>Push</b> lights up their lock screen and buzzes the phone immediately.<br><br>
+      Only devices that opened the OWN.CAR app and allowed notifications will receive it. A customer using only the website or WhatsApp gets nothing here — use <b>Notify</b> or a message for them.<br><br>
+      Pick <b>Everyone</b> for broadcasts (a new car, an offer), or one customer for a personal nudge (dues reminder).
+    </div>
+  </div>`));
+  app.appendChild(grid);
+  wireHeader();
+  try{ if(!CUSTOMERS.length){ const d=await api('/api/admin/customers'); CUSTOMERS=d.customers||[]; } }catch(e){}
+  const sel=document.getElementById('paud');
+  CUSTOMERS.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=c.email; sel.appendChild(o); });
+  document.getElementById('psend').onclick=sendPush;
+}
+async function sendPush(){
+  const email=document.getElementById('paud').value;
+  const title=document.getElementById('ptitle2').value.trim();
+  const body=document.getElementById('pbody').value.trim();
+  const res=document.getElementById('presult');
+  if(!title && !body){ res.className='preview no'; res.textContent='Enter a title or a message first.'; return; }
+  if(!confirm('Send a push notification to '+(email?email:'EVERYONE with the app')+'? Their phone will buzz right away.')) return;
+  const btn=document.getElementById('psend'); btn.disabled=true; const old=btn.textContent; btn.textContent='Sending…';
+  res.className='preview no'; res.textContent='Sending…';
+  try{
+    const d=await api('/api/admin/push/send',{method:'POST',body:JSON.stringify({email,title,body})});
+    res.className='preview ok';
+    res.textContent='✓ Sent to '+(d.devices||0)+' device'+((d.devices===1)?'':'s')+((d.failed)?(' ('+d.failed+' failed)'):'')+'.';
+    document.getElementById('ptitle2').value=''; document.getElementById('pbody').value=''; document.getElementById('paud').value='';
+  }catch(e){
+    res.className='preview no'; res.textContent=(e&&e.error)||'Could not send the push notification.';
+  }finally{ btn.disabled=false; btn.textContent=old; }
 }
 
 // ---------- PAYMENTS ----------

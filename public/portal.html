@@ -711,7 +711,7 @@ async function viewAccount(){
       ${me.phone?`<div class="muted" style="font-size:13px;margin-top:2px">${me.phone}</div>`:''}
     </div>
     <button class="btn btn-ghost" id="logout" style="margin-top:16px">Sign out</button>`,{title:'Account',back:true});
-  document.getElementById('logout').onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; renderLogin(); notifyAuth(); };
+  document.getElementById('logout').onclick=async()=>{ await api('/api/logout',{method:'POST'}); ME=null; PUSH.authed=false; PUSH.sent=''; renderLogin(); notifyAuth(); };
 }
 
 // ---------- BOOKING ----------
@@ -997,10 +997,34 @@ function notifyAuth(){ if(EMBEDDED){ try{ window.parent.postMessage('owncar-auth
 // Lock zoom (iOS Safari ignores user-scalable=no) — block pinch gestures.
 ['gesturestart','gesturechange','gestureend'].forEach(function(ev){ document.addEventListener(ev,function(e){ e.preventDefault(); },{passive:false}); });
 
+// ---------- NATIVE PUSH (register this device's FCM token) ----------
+// The Android / iOS WebView wrappers hand us the device's FCM push token two ways:
+//   1) they call window.OWNCAR_onPushToken(token, platform) once they have it, and
+//   2) Android also exposes a synchronous bridge: window.AndroidPush.getToken().
+// We remember the latest token and POST it to /api/push/register whenever the customer
+// is signed in, so the token gets tied to their account (used by the admin Push screen).
+var PUSH={ token:'', platform:'', authed:false, sent:'' };
+async function registerPushToken(){
+  if(!PUSH.authed || !PUSH.token || PUSH.sent===PUSH.token) return;
+  var t=PUSH.token;
+  try{
+    await fetch('/api/push/register',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({token:t,platform:PUSH.platform||''})});
+    PUSH.sent=t;   // remember so we don't re-post the same token every boot
+  }catch(e){}
+}
+window.OWNCAR_onPushToken=function(token, platform){
+  if(!token) return;
+  PUSH.token=String(token); PUSH.platform=String(platform||PUSH.platform||'');
+  registerPushToken();
+};
+function pullPushToken(){
+  try{ if(window.AndroidPush && typeof window.AndroidPush.getToken==='function'){ var t=window.AndroidPush.getToken(); if(t){ PUSH.token=String(t); if(!PUSH.platform) PUSH.platform='android'; } } }catch(e){}
+}
+
 // ---------- BOOT ----------
 async function boot(){
   try{ CFG=await api('/api/config'); }catch(e){}
-  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); }
+  try{ await api('/api/me'); CURRENT='home'; await viewHome(); notifyAuth(); PUSH.authed=true; pullPushToken(); registerPushToken(); }
   catch(e){ renderLogin(); }
   checkPayReturn();
 }

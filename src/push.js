@@ -105,22 +105,27 @@ function cleanImage(image) {
   return /^https:\/\/\S+$/i.test(s) ? s : "";
 }
 
+// DATA-ONLY messages: there is NO `notification` block anywhere (not top-level and
+// not under `android`). That forces the Android app to render every push itself —
+// so it always shows the small white icon, gold accent, the app logo as the large
+// icon, expandable text, and buzzes via its "owncar_default" channel — even when the
+// app is in the background. The app reads these data keys (all values are strings):
+//   title (required), body (required), url (optional https deep-link), type, id, image.
+// Sound/vibration come from the app's channel, so we deliberately set no sound here.
 function buildMessage({ title, body, data, image }) {
   const img = cleanImage(image);
-  const msg = {
-    notification: { title: title || "OWN.CAR", body: body || "" },
-    data: Object.fromEntries(Object.entries(data || {}).map(([k, v]) => [String(k), String(v)])),
-    android: { priority: "high", notification: { sound: "default", channelId: "owncar_default" } },
-    apns: { headers: { "apns-priority": "10" }, payload: { aps: { sound: "default" } } },
+  const payload = {
+    // caller-supplied keys first (e.g. url, type, id) — coerced to strings…
+    ...Object.fromEntries(Object.entries(data || {}).map(([k, v]) => [String(k), String(v == null ? "" : v)])),
+    // …then the required text keys, which always win.
+    title: String(title || "OWN.CAR"),
+    body: String(body || ""),
   };
-  if (img) {
-    msg.notification.imageUrl = img;              // top-level (Android system tray + web)
-    msg.android.notification.imageUrl = img;      // Android BigPicture (auto in background)
-    msg.apns.payload.aps["mutable-content"] = 1;  // let the iOS service extension fetch it
-    msg.apns.fcmOptions = { imageUrl: img };      // iOS image via FCM
-    msg.data.image = img;                         // so a foreground handler can render it too
-  }
-  return msg;
+  if (img) payload.image = img;
+  return {
+    data: payload,
+    android: { priority: "high" },
+  };
 }
 
 // Send to a list of device tokens. Auto-removes tokens FCM reports as dead.

@@ -47,7 +47,7 @@
   .iconbtn{width:42px;height:42px;border-radius:13px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);position:relative;}
   .iconbtn svg{width:19px;height:19px;}
   .iconbtn .dot{position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
-  .avatar{width:42px;height:42px;border-radius:13px;background:var(--accent);color:#0B0B0C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;border:none;}
+  .avatar{height:42px;line-height:42px;max-width:150px;padding:0 15px;border-radius:13px;background:var(--accent);color:#0B0B0C;font-weight:800;font-size:14px;border:none;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .subhead{display:flex;align-items:center;gap:12px;padding:calc(18px + env(safe-area-inset-top,0px)) 20px 8px;position:sticky;top:0;z-index:20;background:var(--bg2);}
   .backbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;}
   .htitle{font-size:19px;font-weight:700;letter-spacing:-.3px;}
@@ -479,8 +479,8 @@ function shell(bodyHtml, opts={}){
   } else if(opts.title){
     head=`<div class="subhead"><div class="htitle">${opts.title}</div></div>`;
   } else {
-    const initial=(ME&&ME.name?ME.name.trim()[0]:'•').toUpperCase();
-    head=`<div class="topbar">${EMBEDDED?'<div></div>':`<button class="backapp" id="backapp"><span class="msym">chevron_left</span><span>OWN.CAR</span></button>`}<div class="tb-right"><button class="iconbtn" id="bell">${IC.bell}${UNREAD>0?'<span class="dot"></span>':''}</button><button class="avatar" id="avatar">${initial}</button></div></div>`;
+    const firstName=(ME&&ME.name&&ME.name.trim())?ME.name.trim().split(' ')[0]:'Account';
+    head=`<div class="topbar">${EMBEDDED?'<div></div>':`<button class="backapp" id="backapp"><span class="msym">chevron_left</span><span>OWN.CAR</span></button>`}<div class="tb-right"><button class="iconbtn" id="bell">${IC.bell}${UNREAD>0?'<span class="dot"></span>':''}</button><button class="avatar" id="avatar">${firstName}</button></div></div>`;
   }
   app.appendChild($(`<div>${head}<div class="body">${bodyHtml}</div></div>`));
   const b=document.getElementById('back'); if(b) b.onclick=()=>go('home');

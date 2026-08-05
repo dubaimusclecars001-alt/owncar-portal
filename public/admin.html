@@ -502,11 +502,10 @@ async function renderPush(){
     <div class="preview no" id="presult" style="margin-top:12px">This buzzes the phone right away (Android &amp; iPhone apps only). Nothing is saved — it is not the in-app bell.</div>
   </div>`));
   grid.appendChild($(`<div class="card">
-    <h2>About push</h2>
-    <div class="hint" style="font-size:12.5px;line-height:1.7;color:var(--muted)">
-      <b style="color:var(--text)">Push vs. Notify:</b> the <b>Notify</b> tab drops a message in the app's bell that customers see next time they open it. <b>Push</b> lights up their lock screen and buzzes the phone immediately.<br><br>
-      Only devices that opened the OWN.CAR app and allowed notifications will receive it. A customer using only the website or WhatsApp gets nothing here — use <b>Notify</b> or a message for them.<br><br>
-      Pick <b>Everyone</b> for broadcasts (a new car, an offer), or one customer for a personal nudge (dues reminder).
+    <h2>Registered devices</h2>
+    <div id="pdevices"><div class="cust-empty">Loading…</div></div>
+    <div class="hint" style="font-size:12px;line-height:1.6;color:var(--muted2);margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      Only phones that opened the app, allowed notifications and <b>signed in</b> show here — each device is tied to whoever is signed in on it. A customer marked 📱 has a device; pick <b>Everyone</b> for a broadcast.
     </div>
   </div>`));
   app.appendChild(grid);
@@ -514,6 +513,7 @@ async function renderPush(){
   try{ if(!CUSTOMERS.length){ const d=await api('/api/admin/customers'); CUSTOMERS=d.customers||[]; } }catch(e){}
   const sel=document.getElementById('paud');
   CUSTOMERS.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=c.email; sel.appendChild(o); });
+  loadPushDevices();
   const img=document.getElementById('pimg'), prevBox=document.getElementById('pimgprev'), prevImg=document.getElementById('pimgprevimg');
   img.oninput=()=>{
     const v=img.value.trim();
@@ -560,6 +560,24 @@ async function sendPush(){
   }catch(e){
     res.className='preview no'; res.textContent=(e&&e.error)||'Could not send the push notification.';
   }finally{ btn.disabled=false; btn.textContent=old; }
+}
+
+async function loadPushDevices(){
+  const box=document.getElementById('pdevices'); if(!box) return;
+  let d={}; try{ d=await api('/api/admin/push/devices'); }catch(e){ box.innerHTML='<div class="cust-empty">Could not load devices.</div>'; return; }
+  const total=d.total||0, bp=d.byPlatform||{}, custs=d.customers||[];
+  const plat=Object.keys(bp).map(k=>bp[k]+' '+k).join(' · ')||'none';
+  // mark customers who have a device in the "To" dropdown
+  const withDevice=new Set(custs.map(c=>c.email));
+  const sel=document.getElementById('paud');
+  if(sel) Array.from(sel.options).forEach(o=>{ if(o.value && withDevice.has(o.value) && !/📱/.test(o.textContent)) o.textContent=o.textContent+' 📱'; });
+  if(!total){ box.innerHTML='<div class="cust-empty">No devices registered yet.</div>'; return; }
+  box.innerHTML='';
+  box.appendChild($(`<div style="font-size:13px;color:var(--muted);margin-bottom:12px"><b style="color:var(--text);font-size:16px">${total}</b> device${total===1?'':'s'} · ${esc(plat)}</div>`));
+  custs.forEach(c=>{
+    const pl=Object.keys(c.platforms||{}).map(k=>c.platforms[k]+'× '+k).join(', ');
+    box.appendChild($(`<div class="bk" style="padding:11px 13px;margin-bottom:8px"><div class="who" style="font-size:13.5px;word-break:break-all">${esc(c.email)}</div><div class="meta" style="margin-top:4px"><b>${esc(pl)}</b>${c.last?(' &nbsp; · '+fmtDate(c.last)):''}</div></div>`));
+  });
 }
 
 // ---------- PAYMENTS ----------

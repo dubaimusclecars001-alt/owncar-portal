@@ -12,7 +12,7 @@ import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
 import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef, saveCardPayment } from "./src/payments.js";
 import { markApplicationPaid } from "./src/appswrite.js";
-import { saveToken, tokensForEmail, allTokens, sendToTokens, uploadPushImage } from "./src/push.js";
+import { saveToken, tokensForEmail, allTokens, sendToTokens, uploadPushImage, listDevices } from "./src/push.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
 import { initFleetLive } from "./src/fleetlive.js";
 
@@ -680,6 +680,26 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
 app.post("/api/admin/notifications/:id/delete", requireAdmin, async (req, res) => {
   try { await deleteNotification(req.params.id); res.json({ ok: true }); }
   catch (e) { console.error(e); res.status(502).json({ error: "Could not delete the notification." }); }
+});
+
+// Registered push devices, grouped by customer + platform (for the admin Push screen).
+app.get("/api/admin/push/devices", requireAdmin, async (req, res) => {
+  try {
+    const rows = await listDevices();
+    const byPlatform = {};
+    const byEmail = {};
+    rows.forEach((r) => {
+      const p = (r.platform || "unknown").toLowerCase();
+      byPlatform[p] = (byPlatform[p] || 0) + 1;
+      const e = ((r.email || "").toLowerCase()) || "(not signed in)";
+      if (!byEmail[e]) byEmail[e] = { email: e, count: 0, platforms: {}, last: null };
+      byEmail[e].count++;
+      byEmail[e].platforms[p] = (byEmail[e].platforms[p] || 0) + 1;
+      if (!byEmail[e].last || String(r.updated_at) > String(byEmail[e].last)) byEmail[e].last = r.updated_at;
+    });
+    const customers = Object.values(byEmail).sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
+    res.json({ total: rows.length, byPlatform, customers });
+  } catch (e) { console.error("push devices:", e.message); res.status(500).json({ error: "Could not load devices." }); }
 });
 
 // Upload a photo for a push notification -> returns a public https URL (stored in Supabase Storage).

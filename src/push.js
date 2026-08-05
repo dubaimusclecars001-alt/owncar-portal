@@ -73,6 +73,14 @@ async function selectTokens(query) {
 export const tokensForEmail = (email) => (email ? selectTokens(`&email=eq.${encodeURIComponent(email.toLowerCase())}`) : Promise.resolve([]));
 export const allTokens = () => selectTokens("");
 
+// List registered devices (email + platform + when) for the admin screen. Newest first.
+export async function listDevices() {
+  if (!usingSupabase) return [];
+  const res = await fetch(`${SUPA_URL}/rest/v1/${TOKENS_TABLE}?select=email,platform,updated_at&order=updated_at.desc`, { headers: h() });
+  if (!res.ok) return [];
+  return await res.json().catch(() => []);
+}
+
 // Remove dead/expired tokens (called automatically after a send reports them invalid).
 export async function removeTokens(tokens) {
   if (!usingSupabase || !tokens || !tokens.length) return;

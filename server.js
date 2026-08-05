@@ -697,6 +697,11 @@ app.get("/api/admin/push/devices", requireAdmin, async (req, res) => {
       byEmail[e].platforms[p] = (byEmail[e].platforms[p] || 0) + 1;
       if (!byEmail[e].last || String(r.updated_at) > String(byEmail[e].last)) byEmail[e].last = r.updated_at;
     });
+    // Attach each customer's Zoho name (best-effort; falls back to email in the UI).
+    await Promise.all(Object.values(byEmail).map(async (c) => {
+      if (!c.email || c.email === "(not signed in)") return;
+      try { const cust = await getCustomerByEmail(c.email); c.name = (cust && cust.contact_name) || null; } catch (e) { c.name = null; }
+    }));
     const customers = Object.values(byEmail).sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
     res.json({ total: rows.length, byPlatform, customers });
   } catch (e) { console.error("push devices:", e.message); res.status(500).json({ error: "Could not load devices." }); }

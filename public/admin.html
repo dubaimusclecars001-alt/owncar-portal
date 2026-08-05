@@ -510,10 +510,7 @@ async function renderPush(){
   </div>`));
   app.appendChild(grid);
   wireHeader();
-  try{ if(!CUSTOMERS.length){ const d=await api('/api/admin/customers'); CUSTOMERS=d.customers||[]; } }catch(e){}
-  const sel=document.getElementById('paud');
-  CUSTOMERS.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=c.email; sel.appendChild(o); });
-  loadPushDevices();
+  loadPushDevices();   // fills the "To" dropdown (by name) + the registered-devices list
   const img=document.getElementById('pimg'), prevBox=document.getElementById('pimgprev'), prevImg=document.getElementById('pimgprevimg');
   img.oninput=()=>{
     const v=img.value.trim();
@@ -540,14 +537,16 @@ async function renderPush(){
   document.getElementById('psend').onclick=sendPush;
 }
 async function sendPush(){
-  const email=document.getElementById('paud').value;
+  const paud=document.getElementById('paud');
+  const email=paud.value;
+  const toLabel=email?((paud.options[paud.selectedIndex]&&paud.options[paud.selectedIndex].textContent)||email):'EVERYONE with the app';
   const title=document.getElementById('ptitle2').value.trim();
   const body=document.getElementById('pbody').value.trim();
   const image=document.getElementById('pimg').value.trim();
   const res=document.getElementById('presult');
   if(!title && !body){ res.className='preview no'; res.textContent='Enter a title or a message first.'; return; }
   if(image && !/^https:\/\/\S+$/i.test(image)){ res.className='preview no'; res.textContent='The image must be a public https:// link (or leave it empty).'; return; }
-  if(!confirm('Send a push notification to '+(email?email:'EVERYONE with the app')+'? Their phone will buzz right away.')) return;
+  if(!confirm('Send a push notification to '+toLabel+'? Their phone will buzz right away.')) return;
   const btn=document.getElementById('psend'); btn.disabled=true; const old=btn.textContent; btn.textContent='Sending…';
   res.className='preview no'; res.textContent='Sending…';
   try{
@@ -567,16 +566,21 @@ async function loadPushDevices(){
   let d={}; try{ d=await api('/api/admin/push/devices'); }catch(e){ box.innerHTML='<div class="cust-empty">Could not load devices.</div>'; return; }
   const total=d.total||0, bp=d.byPlatform||{}, custs=d.customers||[];
   const plat=Object.keys(bp).map(k=>bp[k]+' '+k).join(' · ')||'none';
-  // mark customers who have a device in the "To" dropdown
-  const withDevice=new Set(custs.map(c=>c.email));
+  // Build the "To" dropdown from customers who actually have a device — shown BY NAME (Zoho).
   const sel=document.getElementById('paud');
-  if(sel) Array.from(sel.options).forEach(o=>{ if(o.value && withDevice.has(o.value) && !/📱/.test(o.textContent)) o.textContent=o.textContent+' 📱'; });
+  if(sel){
+    sel.innerHTML='<option value="">Everyone (all devices)</option>';
+    custs.filter(c=>c.email && c.email!=='(not signed in)').forEach(c=>{
+      const o=document.createElement('option'); o.value=c.email; o.textContent=(c.name||c.email); sel.appendChild(o);
+    });
+  }
   if(!total){ box.innerHTML='<div class="cust-empty">No devices registered yet.</div>'; return; }
   box.innerHTML='';
   box.appendChild($(`<div style="font-size:13px;color:var(--muted);margin-bottom:12px"><b style="color:var(--text);font-size:16px">${total}</b> device${total===1?'':'s'} · ${esc(plat)}</div>`));
   custs.forEach(c=>{
     const pl=Object.keys(c.platforms||{}).map(k=>c.platforms[k]+'× '+k).join(', ');
-    box.appendChild($(`<div class="bk" style="padding:11px 13px;margin-bottom:8px"><div class="who" style="font-size:13.5px;word-break:break-all">${esc(c.email)}</div><div class="meta" style="margin-top:4px"><b>${esc(pl)}</b>${c.last?(' &nbsp; · '+fmtDate(c.last)):''}</div></div>`));
+    const name=c.name||c.email;
+    box.appendChild($(`<div class="bk" style="padding:11px 13px;margin-bottom:8px"><div class="who" style="font-size:14px">${esc(name)}</div><div class="meta" style="margin-top:3px;word-break:break-all">${c.name?(esc(c.email)+' &nbsp;·&nbsp; '):''}<b>${esc(pl)}</b>${c.last?(' &nbsp;·&nbsp; '+fmtDate(c.last)):''}</div></div>`));
   });
 }
 

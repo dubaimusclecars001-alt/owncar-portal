@@ -113,26 +113,31 @@ function cleanImage(image) {
   return /^https:\/\/\S+$/i.test(s) ? s : "";
 }
 
-// DATA-ONLY messages: there is NO `notification` block anywhere (not top-level and
-// not under `android`). That forces the Android app to render every push itself —
-// so it always shows the small white icon, gold accent, the app logo as the large
-// icon, expandable text, and buzzes via its "owncar_default" channel — even when the
-// app is in the background. The app reads these data keys (all values are strings):
-//   title (required), body (required), url (optional https deep-link), type, id, image.
-// Sound/vibration come from the app's channel, so we deliberately set no sound here.
+// Per-platform push:
+//  • ANDROID = DATA-ONLY (no `notification` block anywhere) so the app renders every push
+//    itself — small white icon, gold accent, app-logo large icon, buzz via "owncar_default".
+//  • iOS = a native APNs `alert` — iPhones CANNOT display a data-only push (it's a silent
+//    background message APNs rejects), so they need a real alert to show a notification.
+// FCM routes each platform to its own block: Android reads `android`+`data`, iOS reads `apns`.
+// The app also gets the data keys (all strings): title, body, url, type, id, image.
 function buildMessage({ title, body, data, image }) {
   const img = cleanImage(image);
+  const t = String(title || "OWN.CAR");
+  const b = String(body || "");
   const payload = {
-    // caller-supplied keys first (e.g. url, type, id) — coerced to strings…
     ...Object.fromEntries(Object.entries(data || {}).map(([k, v]) => [String(k), String(v == null ? "" : v)])),
-    // …then the required text keys, which always win.
-    title: String(title || "OWN.CAR"),
-    body: String(body || ""),
+    title: t,
+    body: b,
   };
   if (img) payload.image = img;
+  const aps = { alert: { title: t, body: b }, sound: "default" };
+  if (img) aps["mutable-content"] = 1;            // let an iOS service extension attach the image
+  const apns = { headers: { "apns-priority": "10" }, payload: { aps } };
+  if (img) apns.fcmOptions = { imageUrl: img };
   return {
-    data: payload,
-    android: { priority: "high" },
+    data: payload,                  // Android app renders from this
+    android: { priority: "high" },  // still data-only for Android (no notification block)
+    apns,                           // iPhones show a native notification via APNs
   };
 }
 
@@ -142,23 +147,29 @@ export async function sendToTokens(tokens, opts = {}) {
   const messaging = await getMessaging();
   if (!messaging) return { ok: false, reason: "not configured" };
   tokens = [...new Set((tokens || []).filter(Boolean))];
-  if (!tokens.length) return { ok: true, sent: 0, failed: 0, invalidTokens: [] };
+  if (!tokens.length) return { ok: true, sent: 0, failed: 0, invalidTokens: [], errors: {} };
   const base = buildMessage(opts);
   const invalidTokens = [];
+  const errorCounts = {};
   let sent = 0, failed = 0;
   for (let i = 0; i < tokens.length; i += 500) {
     const batch = tokens.slice(i, i + 500);
     const resp = await messaging.sendEachForMulticast({ ...base, tokens: batch });
     sent += resp.successCount; failed += resp.failureCount;
     resp.responses.forEach((r, idx) => {
-      const code = r && r.error && r.error.code;
-      if (!r.success && (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token" || code === "messaging/invalid-argument")) {
+      if (r.success) return;
+      const code = (r.error && r.error.code) || "unknown";
+      errorCounts[code] = (errorCounts[code] || 0) + 1;
+      // Only drop tokens that are genuinely dead. NOT on invalid-argument — that usually means
+      // the MESSAGE was malformed, not the token, and would wrongly wipe good devices.
+      if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
         invalidTokens.push(batch[idx]);
       }
     });
   }
   if (invalidTokens.length) await removeTokens(invalidTokens).catch(() => {});
-  return { ok: true, sent, failed, invalidTokens };
+  if (failed) console.log("[push] send:", sent, "ok,", failed, "failed —", JSON.stringify(errorCounts));
+  return { ok: true, sent, failed, invalidTokens, errors: errorCounts };
 }
 
 // Broadcast to everyone via a topic the apps subscribe to on launch (one call, no token list).

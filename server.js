@@ -732,7 +732,7 @@ app.post("/api/admin/push/send", requireAdmin, async (req, res) => {
     if (!tokens.length) return res.status(404).json({ error: email ? "That customer has no device registered for notifications yet." : "No devices are registered for notifications yet." });
     const r = await sendToTokens(tokens, { title, body, image, data: (req.body.data && typeof req.body.data === "object") ? req.body.data : {} });
     if (!r.ok) return res.status(503).json({ error: "Push is not configured on the server yet." });
-    res.json({ ok: true, sent: r.sent, failed: r.failed, devices: tokens.length });
+    res.json({ ok: true, sent: r.sent, failed: r.failed, devices: tokens.length, errors: r.errors || {} });
   } catch (e) { console.error("push send:", e.message); res.status(500).json({ error: "Could not send the notification." }); }
 });
 

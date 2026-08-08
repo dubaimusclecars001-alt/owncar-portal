@@ -551,8 +551,9 @@ async function sendPush(){
   res.className='preview no'; res.textContent='Sending…';
   try{
     const d=await api('/api/admin/push/send',{method:'POST',body:JSON.stringify({email,title,body,image})});
-    res.className='preview ok';
-    res.textContent='✓ Sent to '+(d.devices||0)+' device'+((d.devices===1)?'':'s')+((d.failed)?(' ('+d.failed+' failed)'):'')+'.';
+    const reasons=(d.errors&&Object.keys(d.errors).length)?Object.keys(d.errors).map(function(k){return d.errors[k]+'× '+k.replace('messaging/','');}).join(', '):'';
+    res.className=d.failed?'preview no':'preview ok';
+    res.textContent=(d.failed?'':'✓ ')+'Sent to '+((d.sent!=null)?d.sent:(d.devices||0))+' of '+(d.devices||0)+' device'+((d.devices===1)?'':'s')+(d.failed?(' — '+d.failed+' failed'+(reasons?(' ('+reasons+')'):'')):'')+'.';
     document.getElementById('ptitle2').value=''; document.getElementById('pbody').value=''; document.getElementById('paud').value='';
     document.getElementById('pimg').value=''; document.getElementById('pimgprev').style.display='none';
     const upst=document.getElementById('pupstatus'); if(upst) upst.textContent='';

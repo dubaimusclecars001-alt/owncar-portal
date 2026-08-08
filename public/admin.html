@@ -480,7 +480,9 @@ async function renderPush(){
   grid.appendChild($(`<div class="card">
     <h2>Send a push notification</h2>
     <label>To</label>
+    <input id="psearch" placeholder="Search a customer by name or email…" autocomplete="off" style="margin-bottom:8px">
     <select id="paud"><option value="">Everyone (all devices)</option></select>
+    <div class="hint" id="psearchhint" style="margin-top:6px"></div>
     <div style="height:12px"></div>
     <label>Title</label>
     <input id="ptitle2" placeholder="e.g. Car available — AED 2,500" autocomplete="off" maxlength="120">
@@ -511,6 +513,7 @@ async function renderPush(){
   app.appendChild(grid);
   wireHeader();
   loadPushDevices();   // fills the "To" dropdown (by name) + the registered-devices list
+  const psearch=document.getElementById('psearch'); if(psearch) psearch.oninput=()=>fillPushDropdown(psearch.value);
   const img=document.getElementById('pimg'), prevBox=document.getElementById('pimgprev'), prevImg=document.getElementById('pimgprevimg');
   img.oninput=()=>{
     const v=img.value.trim();
@@ -562,19 +565,29 @@ async function sendPush(){
   }finally{ btn.disabled=false; btn.textContent=old; }
 }
 
+let PUSH_DEVICE_CUSTS=[];
+// (Re)build the push "To" dropdown from the device-having customers, filtered by the search box.
+function fillPushDropdown(q){
+  const sel=document.getElementById('paud'); if(!sel) return;
+  const prev=sel.value;
+  q=(q||'').trim().toLowerCase();
+  const list=PUSH_DEVICE_CUSTS.filter(c=>!q || (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q));
+  sel.innerHTML='<option value="">Everyone (all devices)</option>';
+  list.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=(c.name||c.email); sel.appendChild(o); });
+  if(q && list.length===1){ sel.value=list[0].email; }                  // single match → auto-select
+  else if([...sel.options].some(o=>o.value===prev)){ sel.value=prev; }  // otherwise keep the prior pick
+  const hint=document.getElementById('psearchhint');
+  if(hint) hint.textContent = q ? (list.length ? (list.length+' match'+(list.length===1?'':'es')) : ('No registered device matches “'+q+'”')) : '';
+}
+
 async function loadPushDevices(){
   const box=document.getElementById('pdevices'); if(!box) return;
   let d={}; try{ d=await api('/api/admin/push/devices'); }catch(e){ box.innerHTML='<div class="cust-empty">Could not load devices.</div>'; return; }
   const total=d.total||0, bp=d.byPlatform||{}, custs=d.customers||[];
   const plat=Object.keys(bp).map(k=>bp[k]+' '+k).join(' · ')||'none';
-  // Build the "To" dropdown from customers who actually have a device — shown BY NAME (Zoho).
-  const sel=document.getElementById('paud');
-  if(sel){
-    sel.innerHTML='<option value="">Everyone (all devices)</option>';
-    custs.filter(c=>c.email && c.email!=='(not signed in)').forEach(c=>{
-      const o=document.createElement('option'); o.value=c.email; o.textContent=(c.name||c.email); sel.appendChild(o);
-    });
-  }
+  // Feed the searchable "To" dropdown from customers who actually have a device (shown by Zoho name).
+  PUSH_DEVICE_CUSTS = custs.filter(c=>c.email && c.email!=='(not signed in)');
+  fillPushDropdown((document.getElementById('psearch')||{}).value||'');
   if(!total){ box.innerHTML='<div class="cust-empty">No devices registered yet.</div>'; return; }
   box.innerHTML='';
   box.appendChild($(`<div style="font-size:13px;color:var(--muted);margin-bottom:12px"><b style="color:var(--text);font-size:16px">${total}</b> device${total===1?'':'s'} · ${esc(plat)}</div>`));

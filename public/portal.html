@@ -843,7 +843,7 @@ function showConfirmModal(){
 }
 
 // ---------- PAY ----------
-let PAY={amount:'',mode:'card',proof:''};
+let PAY={amount:'',mode:'',proof:''};
 function copyText(t){
   try{
     const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
@@ -869,6 +869,7 @@ async function viewPay(){
   const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
   if(PAY.amount===''||Number(PAY.amount)>outstanding) PAY.amount= outstanding? String(outstanding) : '';
   const remaining=Math.max(0, outstanding-(Number(PAY.amount)||0));
+  const proofView = PAY.proof ? `<img src="${PAY.proof}">` : `<span class="msym">cloud_upload</span><span class="ut-t">Tap to upload your transfer receipt</span>`;
   shell(`
     <div class="paysum"><div class="glabel">Total amount due</div><div class="sv">AED ${fmt(outstanding)}</div></div>
     <label>Amount to pay</label>
@@ -877,8 +878,21 @@ async function viewPay(){
     <label>Payment method</label>
     <div class="paymethods">
       <button class="pm ${PAY.mode==='card'?'on':''}" data-mode="card"><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Pay securely by card</span></span><span class="chk">${PAY.mode==='card'?'<span class="msym">check</span>':''}</span></button>
+      <button class="pm ${PAY.mode==='bank'?'on':''}" data-mode="bank"><span class="msym">account_balance</span><span class="pm-m"><span class="pm-t">Bank transfer</span><span class="pm-s">Transfer &amp; upload your receipt</span></span><span class="chk">${PAY.mode==='bank'?'<span class="msym">check</span>':''}</span></button>
     </div>
     <div class="remain" id="cardfee" style="${PAY.mode==='card'?'':'display:none'}">Includes a 2.5% payment gateway charge — total charged: <b>AED <span id="cardtotal">${fmt(Math.round((Number(PAY.amount)||0)*1.025*100)/100)}</span></b></div>
+    <div id="banksec" style="${PAY.mode==='bank'?'':'display:none'}">
+      <div class="bankbox">
+        <div class="glabel mut" style="margin-bottom:8px">Transfer to</div>
+        <div class="bankrow"><span class="k">Account title</span><span class="v">Muscle Cars Rent A Car</span></div>
+        <div class="bankrow"><span class="k">Bank</span><span class="v">Abu Dhabi Commercial Bank</span></div>
+        <div class="bankrow"><span class="k">IBAN</span><button class="v copyv" data-copy="AE280030012811523920001">AE28 0030 0128 1152 3920 001 <span class="msym">content_copy</span></button></div>
+        <div class="bankrow"><span class="k">Account no.</span><button class="v copyv" data-copy="12811523920001">12811523920001 <span class="msym">content_copy</span></button></div>
+        <div class="bankrow"><span class="k">SWIFT / BIC</span><span class="v">ADCBAEAA</span></div>
+      </div>
+      <label>Upload transfer proof</label>
+      <label class="uploadtile" id="uptile"><input type="file" accept="image/*" id="proffile"><div class="utinner" id="utinner">${proofView}</div></label>
+    </div>
     <button class="btn btn-primary" id="paysubmit">Submit payment</button>
   `,{title:'Make a payment',back:true});
   const amt=document.getElementById('payamt'), rem=document.getElementById('remain');
@@ -888,15 +902,20 @@ async function viewPay(){
     PAY.mode=b.dataset.mode;
     app.querySelectorAll('.pm[data-mode]').forEach(x=>{ x.classList.remove('on'); const ck=x.querySelector('.chk'); if(ck) ck.innerHTML=''; });
     b.classList.add('on'); const ck=b.querySelector('.chk'); if(ck) ck.innerHTML='<span class="msym">check</span>';
+    document.getElementById('banksec').style.display = PAY.mode==='bank'?'':'none';
     const cf=document.getElementById('cardfee'); if(cf) cf.style.display = PAY.mode==='card'?'':'none';
     updCardTotal();
   });
+  app.querySelectorAll('.copyv').forEach(b=>b.onclick=()=>copyText(b.dataset.copy));
+  const pf=document.getElementById('proffile');
+  if(pf) pf.onchange=()=>{ const f=pf.files&&pf.files[0]; if(!f) return; compressImage(f,(data)=>{ PAY.proof=data; const ui=document.getElementById('utinner'); if(ui) ui.innerHTML='<img src="'+data+'">'; }); };
   document.getElementById('paysubmit').onclick=async()=>{
     const a=Number(document.getElementById('payamt').value)||0;
     if(a<=0){ toast('Please enter a valid amount.'); return; }
     if(a>outstanding){ toast('Amount cannot exceed the total due.'); return; }
     if(!PAY.mode){ toast('Please choose a payment method.'); return; }
     if(PAY.mode==='card'){ payByCard(a); return; }
+    if(PAY.mode==='bank' && !PAY.proof){ toast('Please upload your transfer proof.'); return; }
     try{
       await api('/api/payments',{method:'POST',body:JSON.stringify({amount:a,mode:PAY.mode,proof:PAY.proof})});
       PAY={amount:'',mode:'',proof:''};

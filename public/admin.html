@@ -541,30 +541,19 @@ async function renderPush(){
 }
 async function sendPush(){
   const paud=document.getElementById('paud');
-  const sel=paud.value;
+  const email=paud.value;
+  const toLabel=email?((paud.options[paud.selectedIndex]&&paud.options[paud.selectedIndex].textContent)||email):'EVERYONE with the app';
   const title=document.getElementById('ptitle2').value.trim();
   const body=document.getElementById('pbody').value.trim();
   const image=document.getElementById('pimg').value.trim();
   const res=document.getElementById('presult');
-  // Build the recipient(s): everyone, one customer, or the whole "pending balance" group (one push).
-  const sendBody={title,body,image};
-  let toLabel;
-  if(sel==='__pending__'){
-    const emails=PUSH_DEVICE_CUSTS.filter(c=>Number(c.outstanding)>0).map(c=>c.email);
-    if(!emails.length){ res.className='preview no'; res.textContent='No customer with a device has a pending balance.'; return; }
-    sendBody.emails=emails; toLabel='the '+emails.length+' customer'+(emails.length===1?'':'s')+' with a pending balance';
-  } else if(sel){
-    sendBody.email=sel; toLabel=(paud.options[paud.selectedIndex]&&paud.options[paud.selectedIndex].textContent)||sel;
-  } else {
-    toLabel='EVERYONE with the app';
-  }
   if(!title && !body){ res.className='preview no'; res.textContent='Enter a title or a message first.'; return; }
   if(image && !/^https:\/\/\S+$/i.test(image)){ res.className='preview no'; res.textContent='The image must be a public https:// link (or leave it empty).'; return; }
   if(!confirm('Send a push notification to '+toLabel+'? Their phone will buzz right away.')) return;
   const btn=document.getElementById('psend'); btn.disabled=true; const old=btn.textContent; btn.textContent='Sending…';
   res.className='preview no'; res.textContent='Sending…';
   try{
-    const d=await api('/api/admin/push/send',{method:'POST',body:JSON.stringify(sendBody)});
+    const d=await api('/api/admin/push/send',{method:'POST',body:JSON.stringify({email,title,body,image})});
     const reasons=(d.errors&&Object.keys(d.errors).length)?Object.keys(d.errors).map(function(k){return d.errors[k]+'× '+k.replace('messaging/','');}).join(', '):'';
     res.className=d.failed?'preview no':'preview ok';
     res.textContent=(d.failed?'':'✓ ')+'Sent to '+((d.sent!=null)?d.sent:(d.devices||0))+' of '+(d.devices||0)+' device'+((d.devices===1)?'':'s')+(d.failed?(' — '+d.failed+' failed'+(reasons?(' ('+reasons+')'):'')):'')+'.';
@@ -584,8 +573,6 @@ function fillPushDropdown(q){
   q=(q||'').trim().toLowerCase();
   const list=PUSH_DEVICE_CUSTS.filter(c=>!q || (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q));
   sel.innerHTML='<option value="">Everyone (all devices)</option>';
-  const pending=PUSH_DEVICE_CUSTS.filter(c=>Number(c.outstanding)>0).length;
-  if(pending){ const po=document.createElement('option'); po.value='__pending__'; po.textContent='💰 Customers with a pending balance ('+pending+')'; sel.appendChild(po); }
   list.forEach(c=>{ const o=document.createElement('option'); o.value=c.email; o.textContent=(c.name||c.email); sel.appendChild(o); });
   if(q && list.length===1){ sel.value=list[0].email; }                  // single match → auto-select
   else if([...sel.options].some(o=>o.value===prev)){ sel.value=prev; }  // otherwise keep the prior pick

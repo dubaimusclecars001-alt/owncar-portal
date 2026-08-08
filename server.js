@@ -700,7 +700,7 @@ app.get("/api/admin/push/devices", requireAdmin, async (req, res) => {
     // Attach each customer's Zoho name (best-effort; falls back to email in the UI).
     await Promise.all(Object.values(byEmail).map(async (c) => {
       if (!c.email || c.email === "(not signed in)") return;
-      try { const cust = await getCustomerByEmail(c.email); c.name = (cust && cust.contact_name) || null; c.outstanding = (cust && cust.outstanding) || 0; } catch (e) { c.name = null; c.outstanding = 0; }
+      try { const cust = await getCustomerByEmail(c.email); c.name = (cust && cust.contact_name) || null; } catch (e) { c.name = null; }
     }));
     const customers = Object.values(byEmail).sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
     res.json({ total: rows.length, byPlatform, customers });
@@ -728,20 +728,8 @@ app.post("/api/admin/push/send", requireAdmin, async (req, res) => {
     const image = String(req.body.image || "").trim();
     if (image && !/^https:\/\/\S+$/i.test(image)) return res.status(400).json({ error: "The image must be a public https:// link." });
     const email = String(req.body.email || "").trim().toLowerCase();
-    // A list of emails (e.g. all customers with a pending balance) -> one push to all their tokens.
-    const emails = Array.isArray(req.body.emails)
-      ? [...new Set(req.body.emails.map((e) => String(e || "").trim().toLowerCase()).filter(Boolean))]
-      : [];
-    let tokens;
-    if (emails.length) {
-      const lists = await Promise.all(emails.map((e) => tokensForEmail(e)));
-      tokens = [...new Set(lists.flat())];
-    } else if (email) {
-      tokens = await tokensForEmail(email);
-    } else {
-      tokens = await allTokens();
-    }
-    if (!tokens.length) return res.status(404).json({ error: emails.length ? "None of those customers have a device registered yet." : (email ? "That customer has no device registered for notifications yet." : "No devices are registered for notifications yet.") });
+    const tokens = email ? await tokensForEmail(email) : await allTokens();
+    if (!tokens.length) return res.status(404).json({ error: email ? "That customer has no device registered for notifications yet." : "No devices are registered for notifications yet." });
     const r = await sendToTokens(tokens, { title, body, image, data: (req.body.data && typeof req.body.data === "object") ? req.body.data : {} });
     if (!r.ok) return res.status(503).json({ error: "Push is not configured on the server yet." });
     res.json({ ok: true, sent: r.sent, failed: r.failed, devices: tokens.length, errors: r.errors || {} });

@@ -55,6 +55,7 @@ export async function getCustomerByEmail(email) {
     contact_name: c.contact_name,
     email: c.email,
     phone: c.mobile || c.phone || null,
+    outstanding: Number(c.outstanding_receivable_amount || 0),
     vehicle: null,
   };
 }

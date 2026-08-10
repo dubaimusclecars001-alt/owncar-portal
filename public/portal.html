@@ -542,7 +542,8 @@ async function viewHome(){
     <div class="phead"><span class="glabel">Total overdue</span><div class="cardicon">${IC.card}</div></div>
     <div class="pamt"><span class="cur">AED</span>${fmt(overdue)}</div>
     <div class="pdue">${overdue>0?'Please clear your overdue balance.':'You have no overdue payments.'}</div>
-    <button class="btn btn-primary" id="seeinv">See invoices</button>
+    <button class="btn btn-primary" id="paynow">Pay now</button>
+    <button class="btn btn-ghost" id="seeinv" style="margin-top:10px">See invoices</button>
   </div>`;
   const dueCard = `<div class="card pay">
     <div class="phead"><span class="glabel">Total amount due</span><div class="cardicon">${IC.card}</div></div>
@@ -867,14 +868,14 @@ async function viewPay(){
   shell('<div class="loading">Loading…</div>',{title:'Make a payment',back:true});
   let invoices=[]; try{ const r=await api('/api/invoices'); invoices=r.invoices||[]; }catch(e){}
   const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
-  if(PAY.amount===''||Number(PAY.amount)>outstanding) PAY.amount= outstanding? String(outstanding) : '';
+  if(PAY.amount==='') PAY.amount= outstanding? String(outstanding) : '';  // prefill the due amount as a convenience, but the customer may pay ANY amount (incl. with a 0 balance)
   const remaining=Math.max(0, outstanding-(Number(PAY.amount)||0));
   const proofView = PAY.proof ? `<img src="${PAY.proof}">` : `<span class="msym">cloud_upload</span><span class="ut-t">Tap to upload your transfer receipt</span>`;
   shell(`
     <div class="paysum"><div class="glabel">Total amount due</div><div class="sv">AED ${fmt(outstanding)}</div></div>
     <label>Amount to pay</label>
-    <div class="amtbox"><span class="cur">AED</span><input id="payamt" type="number" inputmode="decimal" min="1" max="${outstanding}" value="${PAY.amount}" placeholder="0"></div>
-    <div class="remain" id="remain">Remaining after this payment: <b>AED ${fmt(remaining)}</b></div>
+    <div class="amtbox"><span class="cur">AED</span><input id="payamt" type="number" inputmode="decimal" min="1" value="${PAY.amount}" placeholder="0"></div>
+    <div class="remain" id="remain">${outstanding>0?`Remaining after this payment: <b>AED ${fmt(remaining)}</b>`:''}</div>
     <label>Payment method</label>
     <div class="paymethods">
       <button class="pm ${PAY.mode==='card'?'on':''}" data-mode="card"><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Pay securely by card</span></span><span class="chk">${PAY.mode==='card'?'<span class="msym">check</span>':''}</span></button>
@@ -897,7 +898,7 @@ async function viewPay(){
   `,{title:'Make a payment',back:true});
   const amt=document.getElementById('payamt'), rem=document.getElementById('remain');
   const updCardTotal=()=>{ const a=Number((document.getElementById('payamt')||{}).value)||0; const ct=document.getElementById('cardtotal'); if(ct) ct.textContent=fmt(Math.round(a*1.025*100)/100); };
-  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0; rem.innerHTML='Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>'; updCardTotal(); };
+  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0; rem.innerHTML= outstanding>0 ? ('Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>') : ''; updCardTotal(); };
   app.querySelectorAll('.pm[data-mode]').forEach(b=>b.onclick=()=>{
     PAY.mode=b.dataset.mode;
     app.querySelectorAll('.pm[data-mode]').forEach(x=>{ x.classList.remove('on'); const ck=x.querySelector('.chk'); if(ck) ck.innerHTML=''; });
@@ -912,7 +913,6 @@ async function viewPay(){
   document.getElementById('paysubmit').onclick=async()=>{
     const a=Number(document.getElementById('payamt').value)||0;
     if(a<=0){ toast('Please enter a valid amount.'); return; }
-    if(a>outstanding){ toast('Amount cannot exceed the total due.'); return; }
     if(!PAY.mode){ toast('Please choose a payment method.'); return; }
     if(PAY.mode==='card'){ payByCard(a); return; }
     if(PAY.mode==='bank' && !PAY.proof){ toast('Please upload your transfer proof.'); return; }

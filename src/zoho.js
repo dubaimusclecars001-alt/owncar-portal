@@ -173,6 +173,7 @@ export async function getInvoices(contactId) {
     total: i.total,
     balance: i.balance,
     status: i.status,
+    has_attachment: !!i.has_attachment,
   }));
 }
 
@@ -269,6 +270,32 @@ async function booksPdf(pathStr) {
 export async function getInvoicePdf(invoiceId, lines) {
   if (USE_MOCK) return mockPdf("INVOICE", lines);
   return booksPdf(`invoices/${invoiceId}`);
+}
+
+// Fetch the file the owner attached to an invoice in Zoho (image, PDF, etc.).
+// Returns { buffer, contentType, filename } — the caller streams it to the app.
+async function booksFile(pathStr, extraParams = {}) {
+  const token = await getAccessToken();
+  const params = new URLSearchParams({ organization_id: ORG, ...extraParams });
+  const res = await fetch(`${API}/books/v3/${pathStr}?${params.toString()}`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  });
+  if (!res.ok) throw new Error("Zoho file error " + res.status + ": " + (await res.text().catch(() => "")));
+  const contentType = res.headers.get("content-type") || "application/octet-stream";
+  let filename = "";
+  const cd = res.headers.get("content-disposition") || "";
+  const mm = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  if (mm) { try { filename = decodeURIComponent(mm[1]); } catch (e) { filename = mm[1]; } }
+  return { buffer: Buffer.from(await res.arrayBuffer()), contentType, filename };
+}
+
+export async function getInvoiceAttachment(invoiceId) {
+  if (USE_MOCK) {
+    // A tiny sample image so the flow can be exercised without Zoho.
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAWklEQVR4nO3QMQ0AIAwEwEfBv+UyIIGkg8v2eS3nqhkAAAAAAAAAAAAAAAAAAADeVdKAqQ2Y2oCpDZjagKkNmNqAqQ2Y2oCpDZjagKkNmNqAqQ2Y2sAB3wYD/aQK0nEAAAAASUVORK5CYII=";
+    return { buffer: Buffer.from(png, "base64"), contentType: "image/png", filename: "attachment.png" };
+  }
+  return booksFile(`invoices/${invoiceId}/attachment`);
 }
 
 export async function getPaymentPdf(paymentId, lines) {

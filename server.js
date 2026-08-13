@@ -4,7 +4,7 @@ import session from "express-session";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, enrichPlate, USE_MOCK } from "./src/zoho.js";
+import { getCustomerByEmail, getInvoices, getInvoicesTyped, getPayments, getInvoicePdf, getInvoiceAttachment, getPaymentPdf, buildStatementPdf, getVehicle, getVehicles, enrichPlate, USE_MOCK } from "./src/zoho.js";
 import { normPlate, plateIdentity } from "./src/fleet.js";
 import { sendLoginCode, sendBookingNotice, sendBookingConfirmation, emailConfigured } from "./src/mailer.js";
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
@@ -424,6 +424,22 @@ app.get("/api/invoices/:id/pdf", requireAuth, async (req, res) => {
     res.setHeader("Content-Disposition", `inline; filename="${inv.invoice_number}.pdf"`);
     res.send(pdf);
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not download the invoice from Zoho Books." }); }
+});
+
+app.get("/api/invoices/:id/attachment", requireAuth, async (req, res) => {
+  try {
+    const c = await currentCustomer(req);
+    if (!c) return res.status(404).json({ error: "Account not found" });
+    const invoices = await getInvoices(c.contact_id);
+    const inv = invoices.find((i) => String(i.invoice_id) === String(req.params.id));
+    if (!inv) return res.status(404).json({ error: "Invoice not found." });
+    const file = await getInvoiceAttachment(inv.invoice_id);
+    if (!file || !file.buffer || !file.buffer.length) return res.status(404).json({ error: "No attachment on this invoice." });
+    res.setHeader("Content-Type", file.contentType || "application/octet-stream");
+    const fn = (file.filename || inv.invoice_number + "-attachment").replace(/"/g, "");
+    res.setHeader("Content-Disposition", `inline; filename="${fn}"`);
+    res.send(file.buffer);
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not load the attachment from Zoho Books." }); }
 });
 
 app.get("/api/receipts/:id/pdf", requireAuth, async (req, res) => {

@@ -313,6 +313,36 @@ function downloadFile(url, filename){
     finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
   })();
 }
+// Open an invoice's Zoho attachment in-app: images in a lightbox, PDFs in the pdf.js viewer,
+// anything else downloads. Works across iOS/Android WebViews + desktop.
+async function openAttachment(invId, num){
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  try{
+    const r=await fetch('/api/invoices/'+encodeURIComponent(invId)+'/attachment');
+    if(!r.ok){ let m='Could not load the attachment.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
+    const blob=await r.blob(); const type=(blob.type||'').toLowerCase(); const url=URL.createObjectURL(blob);
+    const title=(num||'Invoice')+' — attachment';
+    if(type.indexOf('image/')===0){ showImageOverlay(url, title); }
+    else if(type==='application/pdf'){ viewPdfInApp(url, title); }
+    else { const a=document.createElement('a'); a.href=url; a.download=(num?num+'-attachment':'attachment'); document.body.appendChild(a); a.click(); a.remove(); toast('Downloaded'); }
+    setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 120000);
+  }catch(e){ toast('Could not load the attachment.'); }
+  finally{ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); }
+}
+// Simple full-screen image viewer (native pinch-zoom / scroll to inspect).
+function showImageOverlay(url, title){
+  var ov=$('<div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;color:#fff;flex:none">'
+    +'<div class="att-t" style="font-size:14px;font-weight:600;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>'
+    +'<button class="att-x" style="background:none;border:none;color:#fff;font-size:26px;line-height:1;cursor:pointer;flex:none">&#10005;</button></div>'
+    +'<div style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:flex-start;justify-content:center;padding:0 12px 24px">'
+    +'<img class="att-img" style="max-width:100%;height:auto;border-radius:8px"></div></div>');
+  ov.querySelector('.att-t').textContent=title||'Attachment';
+  ov.querySelector('.att-img').src=url;
+  ov.querySelector('.att-x').onclick=function(){ ov.remove(); };
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
 // ---- In-app PDF viewer (Android WebViews can't render PDFs natively; pdf.js draws them to canvas) ----
 var _pdfjsPromise=null;
 function ensurePdfJs(){
@@ -675,9 +705,11 @@ async function viewPayments(){
     const rows=invoices.map(i=>{
       const st=(i.status||'').toLowerCase(); const cls=st==='paid'?'paid':st==='overdue'?'overdue':'due';
       const ty=i.type||'Other';
+      const total=Number(i.total)||0, bal=Number(i.balance);
+      const partial=(bal>0 && bal<total);  // part-paid → show the full amount AND what's still left
       return `<div class="row tap" data-inv="${i.invoice_id}" data-num="${i.invoice_number}" data-type="${ty}"><div class="ic">${IC.doc}</div>
-        <div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span></div><div class="r2">${ty} · Issued ${dmy(i.date)}</div></div>
-        <div class="r"><div class="amt2">AED ${fmt(i.total)}</div><span class="pill ${cls}">${st==='paid'?'Paid':st==='overdue'?'Overdue':'Due'}</span></div></div>`;
+        <div class="m"><div class="r1">${i.invoice_number}<span class="dl">⤓ PDF</span>${i.has_attachment?`<span class="dl" data-att="${i.invoice_id}" data-num="${i.invoice_number}" style="color:var(--accent)">📎 File</span>`:''}</div><div class="r2">${ty} · Issued ${dmy(i.date)}</div></div>
+        <div class="r"><div class="amt2">AED ${fmt(i.total)}</div>${partial?`<div style="font-size:11.5px;color:var(--accent);font-weight:600;margin-top:2px;white-space:nowrap">AED ${fmt(bal)} left</div>`:''}<span class="pill ${cls}">${st==='paid'?'Paid':st==='overdue'?'Overdue':'Due'}</span></div></div>`;
     }).join('');
     content=chips+(rows||'<div class="loading">No invoices yet.</div>')+`<div class="loading" id="invfempty" style="display:none">No invoices of this type.</div>`;
   } else {
@@ -697,6 +729,7 @@ async function viewPayments(){
     const emp=document.getElementById('invfempty'); if(emp) emp.style.display=shown?'none':'block';
   });
   app.querySelectorAll('.tap[data-inv]').forEach(r=>r.onclick=()=>downloadFile('/api/invoices/'+r.dataset.inv+'/pdf', r.dataset.num+'.pdf'));
+  app.querySelectorAll('.dl[data-att]').forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); openAttachment(el.dataset.att, el.dataset.num); });
   app.querySelectorAll('.tap[data-rcpt]').forEach(r=>r.onclick=()=>downloadFile('/api/receipts/'+r.dataset.rcpt+'/pdf', r.dataset.num+'.pdf'));
 }
 

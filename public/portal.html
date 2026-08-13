@@ -269,11 +269,13 @@ const IC={
 };
 function ensureGload(){
   if(!window._glInit){ window._glInit=1; window._glN=0;
-    var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,5,.55);display:none;align-items:center;justify-content:center;z-index:400}.gload.show{display:flex}.gspin{width:42px;height:42px;border:3px solid rgba(255,255,255,.22);border-top-color:#E0BC4A;border-radius:50%;animation:gspin .7s linear infinite}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
-    var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gspin"></div>'; document.body.appendChild(g);
+    var s=document.createElement('style'); s.textContent='.gload{position:fixed;inset:0;background:rgba(5,5,5,.66);display:none;align-items:center;justify-content:center;z-index:400}.gload.show{display:flex}.gbox{display:flex;flex-direction:column;align-items:center;gap:15px;background:rgba(17,17,19,.95);padding:26px 38px;border-radius:18px;border:1px solid rgba(255,255,255,.09);box-shadow:0 22px 55px -14px rgba(0,0,0,.65)}.gspin{width:44px;height:44px;border:3px solid rgba(255,255,255,.2);border-top-color:#E0BC4A;border-radius:50%;animation:gspin .7s linear infinite}.gtxt{color:#F2F2EE;font-size:14px;font-weight:600;letter-spacing:.3px}@keyframes gspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s);
+    var g=document.createElement('div'); g.className='gload'; g.id='gload'; g.innerHTML='<div class="gbox"><div class="gspin"></div><div class="gtxt" id="gtxt">Loading…</div></div>'; document.body.appendChild(g);
   }
+  var t=document.getElementById('gtxt'); if(t) t.textContent='Loading…';  // reset to default; callers may override via gloadMsg()
   return document.getElementById('gload');
 }
+function gloadMsg(m){ var t=document.getElementById('gtxt'); if(t) t.textContent=m||'Loading…'; }
 async function api(path, opts){
   var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
   try{ const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts}); const d=await r.json().catch(()=>({})); if(!r.ok) throw d; return d; }
@@ -302,7 +304,7 @@ function downloadFile(url, filename){
 
   // Desktop: silent blob download.
   (async()=>{
-    var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+    var g=ensureGload(); window._glN++; if(g) g.classList.add('show'); gloadMsg('Preparing your document…');
     try{
       const r=await fetch(url,{headers:{'Accept':'application/pdf'}});
       if(!r.ok){ let m='Could not download file.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
@@ -316,7 +318,7 @@ function downloadFile(url, filename){
 // Open an invoice's Zoho attachment in-app: images in a lightbox, PDFs in the pdf.js viewer,
 // anything else downloads. Works across iOS/Android WebViews + desktop.
 async function openAttachment(invId, num){
-  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show'); gloadMsg('Loading attachment…');
   try{
     const r=await fetch('/api/invoices/'+encodeURIComponent(invId)+'/attachment');
     if(!r.ok){ let m='Could not load the attachment.'; try{ const j=await r.json(); m=j.error||m; }catch(e){} toast(m); return; }
@@ -357,7 +359,7 @@ function ensurePdfJs(){
   return _pdfjsPromise;
 }
 function viewPdfInApp(url, title){
-  var g=ensureGload(); window._glN++; if(g) g.classList.add('show');
+  var g=ensureGload(); window._glN++; if(g) g.classList.add('show'); gloadMsg('Preparing your document…');
   var done=function(){ window._glN--; if(g && window._glN<=0) g.classList.remove('show'); };
   ensurePdfJs().then(function(pdfjsLib){
     return fetch(url,{headers:{'Accept':'application/pdf'}}).then(function(r){

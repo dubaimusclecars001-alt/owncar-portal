@@ -34,6 +34,7 @@
   .btn{width:100%;height:56px;border:none;border-radius:18px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;}
   .btn-primary{background:linear-gradient(180deg,var(--accent-2),#C79E22);color:#120E04;font-weight:700;box-shadow:0 12px 28px -8px rgba(224,188,74,.42);}
   .btn-ghost{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--line2);font-weight:500;}
+  .btn:disabled{opacity:.4;box-shadow:none;cursor:not-allowed;filter:grayscale(.35);}
   input,select{width:100%;height:52px;background:var(--surface);border:1px solid var(--line);border-radius:13px;color:var(--text);font-size:15px;padding:0 15px;outline:none;}
   input:focus,select:focus{border-color:var(--accent);}
   input[type=date]{color-scheme:dark;padding:0 12px;} input[type=date]::-webkit-calendar-picker-indicator{filter:invert(76%) sepia(38%) saturate(560%) hue-rotate(1deg);cursor:pointer;}
@@ -867,14 +868,16 @@ async function viewPay(){
   shell('<div class="loading">Loading…</div>',{title:'Make a payment',back:true});
   let invoices=[]; try{ const r=await api('/api/invoices'); invoices=r.invoices||[]; }catch(e){}
   const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
-  if(PAY.amount==='') PAY.amount= outstanding? String(outstanding) : '';  // prefill the due amount as a convenience, but the customer may pay ANY amount (incl. with a 0 balance)
+  // Amount always starts at 0 (empty) — the customer must type how much they want to pay; we do NOT prefill the balance.
   const remaining=Math.max(0, outstanding-(Number(PAY.amount)||0));
+  const payAmtNum=Number(PAY.amount)||0;
   const proofView = PAY.proof ? `<img src="${PAY.proof}">` : `<span class="msym">cloud_upload</span><span class="ut-t">Tap to upload your transfer receipt</span>`;
   shell(`
     <div class="paysum"><div class="glabel">Total amount due</div><div class="sv">AED ${fmt(outstanding)}</div></div>
-    <label>Amount to pay</label>
+    <label>How much do you want to pay?</label>
     <div class="amtbox"><span class="cur">AED</span><input id="payamt" type="number" inputmode="decimal" min="1" value="${PAY.amount}" placeholder="0"></div>
-    <div class="remain" id="remain">${outstanding>0?`Remaining after this payment: <b>AED ${fmt(remaining)}</b>`:''}</div>
+    <div class="remain" id="payhint" style="color:var(--accent);${payAmtNum>0?'display:none':''}">Enter an amount above to continue.</div>
+    <div class="remain" id="remain">${(outstanding>0 && payAmtNum>0)?`Remaining after this payment: <b>AED ${fmt(remaining)}</b>`:''}</div>
     <label>Payment method</label>
     <div class="paymethods">
       <button class="pm ${PAY.mode==='card'?'on':''}" data-mode="card"><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Pay securely by card</span></span><span class="chk">${PAY.mode==='card'?'<span class="msym">check</span>':''}</span></button>
@@ -893,11 +896,16 @@ async function viewPay(){
       <label>Upload transfer proof</label>
       <label class="uploadtile" id="uptile"><input type="file" accept="image/*" id="proffile"><div class="utinner" id="utinner">${proofView}</div></label>
     </div>
-    <button class="btn btn-primary" id="paysubmit">Submit payment</button>
+    <button class="btn btn-primary" id="paysubmit"${payAmtNum>0?'':' disabled'}>Submit payment</button>
   `,{title:'Make a payment',back:true});
   const amt=document.getElementById('payamt'), rem=document.getElementById('remain');
+  const payhint=document.getElementById('payhint'), submitBtn=document.getElementById('paysubmit');
   const updCardTotal=()=>{ const a=Number((document.getElementById('payamt')||{}).value)||0; const ct=document.getElementById('cardtotal'); if(ct) ct.textContent=fmt(Math.round(a*1.025*100)/100); };
-  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0; rem.innerHTML= outstanding>0 ? ('Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>') : ''; updCardTotal(); };
+  amt.oninput=()=>{ PAY.amount=amt.value; const a=Number(amt.value)||0;
+    if(payhint) payhint.style.display = a>0 ? 'none' : '';
+    if(submitBtn) submitBtn.disabled = !(a>0);
+    rem.innerHTML= (outstanding>0 && a>0) ? ('Remaining after this payment: <b>AED '+fmt(Math.max(0,outstanding-a))+'</b>') : '';
+    updCardTotal(); };
   app.querySelectorAll('.pm[data-mode]').forEach(b=>b.onclick=()=>{
     PAY.mode=b.dataset.mode;
     app.querySelectorAll('.pm[data-mode]').forEach(x=>{ x.classList.remove('on'); const ck=x.querySelector('.chk'); if(ck) ck.innerHTML=''; });

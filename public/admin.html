@@ -632,13 +632,30 @@ async function renderPayments(){
 }
 async function viewProof(id){
   let proof=''; try{ const d=await api('/api/admin/payments/'+encodeURIComponent(id)+'/proof'); proof=d.proof||''; }catch(e){}
-  const ov=$(`<div class="modal-ov"><div class="modal-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:14px;font-weight:700">Transfer proof</div><button id="pclose" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button></div>
-    ${proof?`<img src="${proof}" style="width:100%;border-radius:12px;display:block">`:'<div class="cust-empty">No proof image.</div>'}
+  const ov=$(`<div class="modal-ov"><div class="modal-card" style="max-width:560px;width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px">
+      <div style="font-size:14px;font-weight:700">Transfer proof</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${proof?`<button id="zout" class="btn ghost" style="width:34px;height:34px;padding:0;font-size:20px;line-height:1">−</button><span id="zlbl" style="font-size:12px;color:var(--muted);min-width:42px;text-align:center">100%</span><button id="zin" class="btn ghost" style="width:34px;height:34px;padding:0;font-size:19px;line-height:1">+</button>`:''}
+        <button id="pclose" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;margin-left:4px">×</button>
+      </div>
+    </div>
+    ${proof?`<div id="pwrap" style="overflow:auto;max-height:72vh;border-radius:12px;background:#000;-webkit-overflow-scrolling:touch"><img id="pimg" src="${proof}" style="width:100%;display:block"></div><div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Use − / + or scroll to zoom · drag to pan</div>`:'<div class="cust-empty">No proof image.</div>'}
   </div></div>`);
   document.body.appendChild(ov);
   ov.querySelector('#pclose').onclick=()=>ov.remove();
   ov.onclick=(e)=>{ if(e.target===ov) ov.remove(); };
+  const img=ov.querySelector('#pimg');
+  if(img){
+    let z=1; const MIN=1, MAX=6, STEP=0.25, lbl=ov.querySelector('#zlbl');
+    const apply=()=>{ img.style.width=(z*100)+'%'; if(lbl) lbl.textContent=Math.round(z*100)+'%'; };
+    const zoom=(dir)=>{ z=Math.min(MAX, Math.max(MIN, +(z+dir*STEP).toFixed(2))); apply(); };
+    ov.querySelector('#zin').onclick=()=>zoom(1);
+    ov.querySelector('#zout').onclick=()=>zoom(-1);
+    ov.querySelector('#pwrap').addEventListener('wheel',(e)=>{ e.preventDefault(); zoom(e.deltaY<0?1:-1); },{passive:false});
+    img.addEventListener('dblclick',()=>{ z = z>1?1:2; apply(); });
+    apply();
+  }
 }
 
 // ---------- BOOT ----------

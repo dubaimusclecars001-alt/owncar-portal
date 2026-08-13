@@ -286,18 +286,10 @@ function downloadFile(url, filename){
   var isAndroid=/Android/i.test(ua);
   var isIOS=/iPhone|iPad|iPod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 
-  // iOS (Safari + in-app WebView): opening the PDF URL in a new tab shows the built-in
-  // PDF viewer reliably. Must run synchronously in the tap to avoid popup blocking.
-  if(isIOS){
-    var w=window.open(url,'_blank');
-    if(!w){ location.href=url; }   // popup blocked -> open in place (Back returns to the app)
-    return;
-  }
-
-  // Android: the packaged app runs in a WebView that CANNOT render PDFs inline and blocks
-  // window.open — which is why it used to download. Instead, render the PDF right inside the
-  // app with pdf.js. (A "Save" button in the viewer still offers download/share as before.)
-  if(isAndroid){
+  // iOS + Android: render the PDF INSIDE the app via pdf.js, so a clear loading card shows
+  // while it fetches (same feel as viewing an attachment) instead of opening a separate tab
+  // with no in-app feedback. If pdf.js fails, viewPdfInApp falls back per-platform (iOS opens a tab).
+  if(isIOS || isAndroid){
     viewPdfInApp(url, filename||'document.pdf');
     return;
   }
@@ -371,8 +363,12 @@ function viewPdfInApp(url, title){
   }).then(function(pdf){
     done(); openPdfOverlay(pdf, title, url);
   }).catch(function(e){
-    // Anything goes wrong (library, network, auth) -> fall back to the old save/share path.
-    done(); androidSaveFile(url, title);
+    // pdf.js/library/network failure -> fall back per platform: iOS opens the PDF in a tab
+    // (its reliable native viewer), Android saves/shares it.
+    done();
+    var iOS=/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+    if(iOS){ var w=window.open(url,'_blank'); if(!w){ location.href=url; } }
+    else { androidSaveFile(url, title); }
   });
 }
 function openPdfOverlay(pdf, title, url){

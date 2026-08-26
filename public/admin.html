@@ -618,9 +618,15 @@ async function renderPayments(){
         <button class="stbtn ${psClass[st]||'st-not'}">${esc(st)}</button>
       </div>
       <div class="meta"><b>Email:</b> ${esc(p.email||'-')} &nbsp; <b>Date:</b> ${fmtDate(p.created)}</div>
-      <div style="margin-top:10px"><button class="btn ghost" data-proof="1" style="font-size:12px;padding:8px 13px">View proof</button></div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap"><button class="btn ghost" data-proof="1" style="font-size:12px;padding:8px 13px">View proof</button><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none"><input type="checkbox" class="rcpt" ${p.receipt_made?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">Receipt made</label></div>
     </div>`);
     const btn=row.querySelector('.stbtn');
+    const rcpt=row.querySelector('.rcpt');
+    if(rcpt) rcpt.onchange=async()=>{
+      const made=rcpt.checked;
+      try{ await api('/api/admin/payments/'+encodeURIComponent(p.id)+'/receipt',{method:'POST',body:JSON.stringify({made:made})}); }
+      catch(e){ rcpt.checked=!made; alert((e&&e.error)||'Could not update the receipt flag.'); }
+    };
     btn.onclick=async()=>{
       const cur=btn.textContent.trim(); const next=PSTATUS[(PSTATUS.indexOf(cur)+1)%PSTATUS.length];
       try{ await api('/api/admin/payments/'+encodeURIComponent(p.id)+'/status',{method:'POST',body:JSON.stringify({status:next})}); btn.textContent=next; btn.className='stbtn '+(psClass[next]||'st-not'); }

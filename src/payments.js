@@ -40,7 +40,7 @@ export async function addPayment(p) {
 // Admin list — WITHOUT the (heavy) proof image; fetch that separately per row.
 export async function listPayments() {
   if (usingSupabase) {
-    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?select=id,created,email,customer_name,amount,mode,status&order=created.desc&limit=300`, { headers: h() });
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?select=id,created,email,customer_name,amount,mode,status,receipt_made&order=created.desc&limit=300`, { headers: h() });
     if (!res.ok) throw new Error("Supabase listPayments " + res.status + ": " + (await res.text().catch(() => "")));
     return await res.json();
   }
@@ -110,4 +110,15 @@ export async function updatePaymentStatus(id, status) {
     return;
   }
   const all = loadFile(); const rec = all.find((x) => String(x.id) === String(id)); if (rec) { rec.status = status; saveFile(all); }
+}
+
+// Toggle the admin "receipt made" flag on a payment submission (defaults false for new rows).
+export async function updatePaymentReceipt(id, made) {
+  const receipt_made = !!made;
+  if (usingSupabase) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: h({ Prefer: "return=minimal" }), body: JSON.stringify({ receipt_made }) });
+    if (!res.ok) throw new Error("Supabase updatePaymentReceipt " + res.status + ": " + (await res.text().catch(() => "")));
+    return;
+  }
+  const all = loadFile(); const rec = all.find((x) => String(x.id) === String(id)); if (rec) { rec.receipt_made = receipt_made; saveFile(all); }
 }

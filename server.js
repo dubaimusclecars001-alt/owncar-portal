@@ -10,7 +10,7 @@ import { sendLoginCode, sendBookingNotice, sendBookingConfirmation, emailConfigu
 import { getUser, setUserPassword, verifyUserPassword, listUsers } from "./src/users.js";
 import { getManagedPlates, setManagedPlates } from "./src/cars.js";
 import { addNotification, listAllNotifications, deleteNotification, listForCustomer, getSeen, setSeen } from "./src/notifications.js";
-import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, confirmPaymentByRef, saveCardPayment } from "./src/payments.js";
+import { addPayment, listPayments, getPaymentProof, updatePaymentStatus, updatePaymentReceipt, confirmPaymentByRef, saveCardPayment } from "./src/payments.js";
 import { markApplicationPaid } from "./src/appswrite.js";
 import { saveToken, tokensForEmail, allTokens, sendToTokens, uploadPushImage, listDevices } from "./src/push.js";
 import { saveBooking, listBookings, updateBookingStatus, getBooking, markBookingConfirmSent, deleteBooking, getBookingsByDate, usingSupabase } from "./src/store.js";
@@ -771,6 +771,12 @@ app.post("/api/admin/payments/:id/status", requireAdmin, async (req, res) => {
     await updatePaymentStatus(req.params.id, status);
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(502).json({ error: "Could not update payment." }); }
+});
+app.post("/api/admin/payments/:id/receipt", requireAdmin, async (req, res) => {
+  try {
+    await updatePaymentReceipt(req.params.id, !!req.body.made);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(502).json({ error: "Could not update the receipt flag." }); }
 });
 
 app.get("/portal", (req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));

@@ -215,11 +215,16 @@ app.post("/api/notifications/seen", requireAuth, async (req, res) => {
 
 // Register this device's push token against the logged-in customer. The native app reads its FCM
 // token and posts it here (through the WebView) once the customer is signed in.
-app.post("/api/push/register", requireAuth, async (req, res) => {
+app.post("/api/push/register", async (req, res) => {
   try {
+    // NOTE: no requireAuth — a device that has NEVER signed in must still register its token so it
+    // receives "everyone" broadcasts. It's stored with email=null (anonymous). If the customer IS
+    // signed in, tag it with their email so per-customer pushes reach them too; signing in later
+    // re-registers the same token (upsert on token) and fills in the email.
     const token = String(req.body.token || "").trim();
     if (!token) return res.status(400).json({ error: "Missing device token." });
-    await saveToken(req.session.email, token, String(req.body.platform || "").slice(0, 20));
+    const email = (req.session && req.session.email) || null;
+    await saveToken(email, token, String(req.body.platform || "").slice(0, 20));
     res.json({ ok: true });
   } catch (e) { console.error("push register:", e.message); res.status(500).json({ error: "Could not register device." }); }
 });

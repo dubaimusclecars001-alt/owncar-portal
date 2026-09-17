@@ -899,6 +899,7 @@ async function viewPay(){
   shell('<div class="loading">Loading…</div>',{title:'Make a payment',back:true});
   let invoices=[]; try{ const r=await api('/api/invoices'); invoices=r.invoices||[]; }catch(e){}
   const outstanding=invoices.reduce((s,i)=>s+Number(i.balance||0),0);
+  PAY.mode='bank';  // card payment removed for now — bank transfer is the only method
   // Amount always starts at 0 (empty) — the customer must type how much they want to pay; we do NOT prefill the balance.
   const remaining=Math.max(0, outstanding-(Number(PAY.amount)||0));
   const payAmtNum=Number(PAY.amount)||0;
@@ -911,11 +912,9 @@ async function viewPay(){
     <div class="remain" id="remain">${(outstanding>0 && payAmtNum>0)?`Remaining after this payment: <b>AED ${fmt(remaining)}</b>`:''}</div>
     <label>Payment method</label>
     <div class="paymethods">
-      <button class="pm ${PAY.mode==='card'?'on':''}" data-mode="card"><span class="msym">credit_card</span><span class="pm-m"><span class="pm-t">Card</span><span class="pm-s">Pay securely by card</span></span><span class="chk">${PAY.mode==='card'?'<span class="msym">check</span>':''}</span></button>
-      <button class="pm ${PAY.mode==='bank'?'on':''}" data-mode="bank"><span class="msym">account_balance</span><span class="pm-m"><span class="pm-t">Bank transfer</span><span class="pm-s">Transfer &amp; upload your receipt</span></span><span class="chk">${PAY.mode==='bank'?'<span class="msym">check</span>':''}</span></button>
+      <button class="pm on" data-mode="bank"><span class="msym">account_balance</span><span class="pm-m"><span class="pm-t">Bank transfer</span><span class="pm-s">Transfer &amp; upload your receipt</span></span><span class="chk"><span class="msym">check</span></span></button>
     </div>
-    <div class="remain" id="cardfee" style="${PAY.mode==='card'?'':'display:none'}">Includes a 2.5% payment gateway charge — total charged: <b>AED <span id="cardtotal">${fmt(Math.round((Number(PAY.amount)||0)*1.025*100)/100)}</span></b></div>
-    <div id="banksec" style="${PAY.mode==='bank'?'':'display:none'}">
+    <div id="banksec">
       <div class="bankbox">
         <div class="glabel mut" style="margin-bottom:8px">Transfer to</div>
         <div class="bankrow"><span class="k">Account title</span><span class="v">Muscle Cars Rent A Car</span></div>
